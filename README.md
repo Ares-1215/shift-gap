@@ -32,6 +32,13 @@
 python tools/ot_forecast.py 20261105 20261106 -o 加班預測_1105-1106.csv --weeks 8 --min 0.25
 ```
 
+## 每日自動（Windows 工作排程 ShiftGap-Forecast）
+
+每天 13:40（OpsHub-Daily 13:00 同步 205 之後）跑 `tools/daily_forecast.ps1` → `daily_forecast.py`：
+推測明天、後天的加班需求清單 → `桌面\運務\加班預測\加班預測_MMDD-MMDD.csv`（另存一份 `加班預測_最新.csv`）；
+若 `桌面\運務` 已有該日的運務通知 .docx 或班次表 .xlsx（檔名含日期），順便跑 analyze.py --needs 產出 `班次空檔分析_MMDD-MMDD.xlsx`。
+紀錄在 `tools/daily.log`；漏跑會在下次開機補執行。手動：`python tools/daily_forecast.py --date 20261105 --days 2`。
+
 ## 離線版（Python）
 
 ```bash
