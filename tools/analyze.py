@@ -243,6 +243,151 @@ def analyze(days, min_gap, buffer):
     return mat, rows
 
 
+# ---------- 加班需求清單 → 配車 ----------
+SAME_STATION_RT = 60   # 本站加班（起迄同站，去客戶取貨）車程未知時假設來回 60 分
+
+
+def parse_hhmm(s):
+    s = str(s or "").strip().replace(":", "").replace("：", "")
+    if not re.fullmatch(r"\d{3,4}", s):
+        return None
+    s = s.zfill(4)
+    h, m = int(s[:2]), int(s[2:])
+    if h > 24 or m > 59:
+        return None
+    return (h % 24) * 60 + m
+
+
+def read_needs(path):
+    """CSV（UTF-8/BOM/cp950）或 xlsx 第一張表；欄位：起站、迄站 必填，日期/時間中位/時間窗起/時間窗迄/機率/等級/預估櫃數/常見班次 選填"""
+    import csv
+    rows = []
+    if path.lower().endswith(".xlsx"):
+        wb = openpyxl.load_workbook(path, data_only=True)
+        ws = wb.worksheets[0]
+        it = ws.iter_rows(values_only=True)
+        hdr = [str(h or "").strip() for h in next(it)]
+        for r in it:
+            rows.append({hdr[i]: (r[i] if i < len(r) else None) for i in range(len(hdr))})
+    else:
+        raw = open(path, "rb").read()
+        for enc in ("utf-8-sig", "utf-8", "cp950"):
+            try:
+                txt = raw.decode(enc)
+                break
+            except UnicodeDecodeError:
+                continue
+        rows = list(csv.DictReader(io.StringIO(txt)))
+    needs = []
+    for r in rows:
+        g = lambda *ks: next((str(r[k]).strip() for k in ks if k in r and r[k] not in (None, "")), "")
+        a, b = g("起站", "from"), g("迄站", "to")
+        if not a or not b:
+            continue
+        tm = parse_hhmm(g("時間中位", "時間", "time"))
+        t1 = parse_hhmm(g("時間窗起", "t1"))
+        t2 = parse_hhmm(g("時間窗迄", "t2"))
+        if t1 is None and tm is not None:
+            t1 = tm - 30
+        if t2 is None and tm is not None:
+            t2 = tm + 30
+        needs.append({"day": re.sub(r"\D", "", g("日期", "day"))[-4:] or None, "from": a, "to": b,
+                      "tmed": opt(tm) if tm is not None else None, "t1": opt(t1) if t1 is not None else 720, "t2": opt(t2) if t2 is not None else 2159,
+                      "prob": g("機率", "prob"), "tier": g("等級", "tier"), "boxes": g("預估櫃數", "boxes"), "names": g("常見班次", "names"),
+                      "note": g("備註", "note")})
+    return needs
+
+
+def match_needs(days, mat, needs, min_gap, buffer):
+    """每條需求：找起站（A）或迄站（B）在站空等、時間窗內放得下來回的車頭"""
+    out = []
+    for d in days:
+        dn = [x for x in needs if not x["day"] or x["day"] == d["label"][-4:]]
+        for nd in dn:
+            S, T = nd["from"], nd["to"]
+            if S == T:
+                tST = tTS = SAME_STATION_RT / 2
+                known = False
+            else:
+                tST, _ = travel(mat, S, T)
+                tTS, _ = travel(mat, T, S)
+                known = tST is not None and tTS is not None
+                if tST is None:
+                    tST = tTS
+                if tTS is None:
+                    tTS = tST
+            cands = []
+            if tST is not None:
+                for t in d["tractors"]:
+                    if not t["active"]:
+                        continue
+                    for g in t["gaps"]:
+                        if g["dur"] < min_gap or g["station"] not in (S, T):
+                            continue
+                        gs = opt(g["start"])
+                        ge = gs + g["dur"]
+                        if g["station"] == S:
+                            lo, hi, pat = max(gs, nd["t1"]), min(nd["t2"], ge - (tST + tTS + buffer)), "A 起站在站"
+                        else:
+                            lo, hi, pat = max(gs + tTS, nd["t1"]), min(nd["t2"], ge - (tST + buffer)), "B 迄站在站"
+                        if S == T and g["station"] == S:
+                            pat = "本站加班"
+                        if lo > hi:
+                            continue
+                        cands.append({"pattern": pat, "tractor": t, "gap": g, "lo": lo, "hi": hi, "slack": ge - lo - (tST + tTS + buffer),
+                                      "rt": tST + tTS + buffer})
+            cands.sort(key=lambda c: (0 if c["pattern"].startswith(("A", "本")) else 1, -c["slack"]))
+            out.append({"day": d["label"], "need": nd, "known": known, "tST": tST, "tTS": tTS, "cands": cands})
+    return out
+
+
+def write_needs_sheets(wb, matched, days, buffer):
+    for d in days:
+        ms = [m for m in matched if m["day"] == d["label"]]
+        if not ms:
+            continue
+        ws = wb.create_sheet(f"加班配車_{d['label']}")
+        data = []
+        for m in ms:
+            nd = m["need"]
+            win = f"{hhmm(nd['t1'])}–{hhmm(nd['t2'])}" if nd["tmed"] is not None else "全日"
+            base = [nd["from"], nd["to"], nd["tier"], nd["prob"], nd["boxes"], win, nd["names"],
+                    (f"{int(m['tST'])}/{int(m['tTS'])}" if m["tST"] is not None else "無車程資料") + ("" if m["known"] else "（估）")]
+            if not m["cands"]:
+                data.append(base + ["—", None, None, None, None, None, None, None, None, "無合適車頭" if m["tST"] is not None else "無車程資料"])
+            for c in m["cands"][:12]:
+                t, g = c["tractor"], c["gap"]
+                flags = []
+                if t["double"]:
+                    flags.append("雙駕駛")
+                if g["prev_leg"] is None:
+                    flags.append("日初待命")
+                for x in (g["prev_leg"], g["next_leg"]):
+                    if x and x.get("note"):
+                        flags.append(f"備註:{x['note']}")
+                data.append(base + [c["pattern"], t["kind"], t["unit"], t["code"], t["name"], g["station"], f"{hhmm(g['start'])}–{hhmm(g['end'])}（{g['dur']}分）",
+                                    f"{hhmm(c['lo'])}–{hhmm(c['hi'])}", int(c["slack"]), "；".join(flags)])
+        write_table(ws, ["起站", "迄站", "等級", "機率", "預估櫃數", "發車時間窗", "常見班次", "去/回車程(分)",
+                         "跑法", "車種", "單位", "車頭代號", "車頭名稱", "空檔站", "空檔時段", "可出發區間", "餘裕(分)", "標記"],
+                    data, [8, 8, 9, 6, 8, 11, 26, 12, 11, 8, 7, 9, 11, 8, 18, 12, 8, 22])
+        for row in ws.iter_rows(min_row=2):
+            tier = row[2].value
+            if tier == "幾乎每週":
+                row[2].fill = GRN
+            elif tier == "很可能":
+                row[2].fill = YEL
+            if row[8].value == "—":
+                row[8].fill = RED
+        # 需求總表
+        ws2 = wb.create_sheet(f"加班需求_{d['label']}")
+        data = [[m["need"]["from"], m["need"]["to"], m["need"]["tier"], m["need"]["prob"], m["need"]["boxes"],
+                 (f"{hhmm(m['need']['t1'])}–{hhmm(m['need']['t2'])}" if m["need"]["tmed"] is not None else "全日"), m["need"]["names"],
+                 len(m["cands"]), sum(1 for c in m["cands"] if c["pattern"][0] in "A本"), sum(1 for c in m["cands"] if c["pattern"][0] == "B"),
+                 "、".join(list(dict.fromkeys(f"{c['tractor']['code']}({c['pattern'][0]})" for c in m["cands"]))[:6])] for m in ms]
+        write_table(ws2, ["起站", "迄站", "等級", "機率", "預估櫃數", "發車時間窗", "常見班次", "候選車頭數", "A 起站", "B 迄站", "候選車頭（前 6）"],
+                    data, [8, 8, 9, 6, 8, 11, 26, 9, 7, 7, 50])
+
+
 # ---------- Excel ----------
 HDR_FILL = PatternFill("solid", fgColor="1F4E78")
 HDR_FONT = Font(bold=True, color="FFFFFF", name="微軟正黑體")
@@ -290,7 +435,7 @@ def cand_text(cands):
     return "、".join(f"{c['station']}({int(c['round'])}分)" for c in cands)
 
 
-def write_excel(days, mat, rows, out, min_gap, buffer):
+def write_excel(days, mat, rows, out, min_gap, buffer, matched=None):
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     ws = wb.create_sheet("說明")
@@ -307,7 +452,9 @@ def write_excel(days, mat, rows, out, min_gap, buffer):
              ["空檔_MMDD", "每台車頭的空檔清單（可篩選單位／站所／分鐘）"],
              ["站所別_MMDD", "依站所、時間排序，看某站某時段有哪些車頭在站"],
              ["時間軸_MMDD", "每台車頭完整行程（班次段＋空檔）"],
-             ["站間車程", "反推的站間車程（樣本數／中位／最小／最長）"]]
+             ["站間車程", "反推的站間車程（樣本數／中位／最小／最長）"],
+             ["加班需求_MMDD", "（有給需求清單時）每條加班路線的候選車頭數"],
+             ["加班配車_MMDD", "（有給需求清單時）每條加班路線的候選車頭：A＝起站在站空等去送再空回、B＝迄站在站空等先空去起站載回來；可出發區間＝時間窗與空檔都放得下的發車時間"]]
     for l in lines:
         ws.append(l)
     ws["A1"].font = Font(bold=True, size=14, name="微軟正黑體")
@@ -365,6 +512,8 @@ def write_excel(days, mat, rows, out, min_gap, buffer):
                 row[12].fill = GRN
             elif row[13].value == "新增/調整":
                 row[13].fill = YEL
+    if matched:
+        write_needs_sheets(wb, matched, days, buffer)
     ws = wb.create_sheet("站間車程")
     data = [[a, b, v["n"], v["med"], v["min"], v["max"]] for (a, b), v in sorted(mat.items(), key=lambda kv: (kv[0][0], kv[1]["med"], kv[0][1]))]
     write_table(ws, ["起站", "迄站", "樣本數", "車程中位(分)", "最短", "最長"], data, [9, 9, 8, 12, 8, 8])
@@ -378,10 +527,20 @@ def main():
     ap.add_argument("--min", type=int, default=60)
     ap.add_argument("--buffer", type=int, default=30)
     ap.add_argument("--json", help="另存分析結果 JSON")
+    ap.add_argument("--needs", help="加班需求清單 CSV/xlsx（ot_forecast.py 產出或自行編）")
     a = ap.parse_args()
     days = [load_day(f) for f in a.files]
     mat, rows = analyze(days, a.min, a.buffer)
-    write_excel(days, mat, rows, a.out, a.min, a.buffer)
+    matched = None
+    if a.needs:
+        needs = read_needs(a.needs)
+        matched = match_needs(days, mat, needs, a.min, a.buffer)
+        for d in days:
+            ms = [m for m in matched if m["day"] == d["label"]]
+            byt = collections.Counter((m["need"]["tier"], bool(m["cands"])) for m in ms)
+            print(f"{d['label']}: 需求 {len(ms)} 條、有候選車頭 {sum(1 for m in ms if m['cands'])} 條；"
+                  + "；".join(f"{t} {byt[(t, True)]}/{byt[(t, True)] + byt[(t, False)]}" for t in ("幾乎每週", "很可能", "偶發")))
+    write_excel(days, mat, rows, a.out, a.min, a.buffer, matched)
     for d in days:
         act = [t for t in d["tractors"] if t["active"]]
         dr = [r for r in rows if r["day"] == d["label"]]
