@@ -32,6 +32,25 @@ def run(args):
     return r.returncode == 0
 
 
+PUSH = HERE / "push_to_site.ps1"
+
+
+def push(path, kind, day=None, name=None):
+    """把檔案推到網站（Edge Function shiftgap，同事開網站就看得到）；管理碼在 tools/site.local.json，沒有就略過"""
+    if not (HERE / "site.local.json").exists():
+        log("  （沒有 tools/site.local.json，略過推送網站）")
+        return False
+    args = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(PUSH), "-Path", str(path), "-Kind", kind]
+    if day:
+        args += ["-Day", day]
+    if name:
+        args += ["-Name", name]
+    r = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    for ln in ((r.stdout or "") + (r.stderr or "")).strip().splitlines():
+        log("  " + ln)
+    return r.returncode == 0
+
+
 def find_docx(ymd):
     """該日的班次表：運務通知 .docx 或班次表 .xlsx（檔名含 MMDD 或 YYYYMMDD），同一天有多個取最新修改的"""
     pat = re.compile(rf"(?<!\d)(?:{ymd}|{ymd[4:]})(?!\d)")
@@ -57,6 +76,7 @@ def main():
         return 1
     shutil.copy(csv_path, OUT / "加班預測_最新.csv")
     log(f"清單 → {csv_path}")
+    push(csv_path, "needs")   # 推到網站：開網站就有配車結果
     # 有通知就配車
     docs = []
     for t in targets:
@@ -67,6 +87,11 @@ def main():
         log(f"找到通知 {[p.name for p in docs]} → 配車")
         run([str(HERE / "analyze.py"), *map(str, docs), "-o", str(xlsx), "--needs", str(csv_path)])
         log(f"配車 Excel → {xlsx}")
+        for t in targets:   # 桌面有的班次表也推到網站：先解析成 JSON（約 100KB），同一天會覆蓋
+            for p in find_docx(t):
+                gz = OUT / f"班次表_{t[4:]}.json.gz"
+                if run([str(HERE / "export_day.py"), str(p), "-o", str(gz), "--label", t[4:]]):
+                    push(gz, "schedule", t[4:], name=p.name)
     else:
         log("桌面運務資料夾沒有這幾天的運務通知 .docx，只產清單（之後把通知放進去再跑一次，或上傳網站）")
     # 清掉 30 天前的舊清單

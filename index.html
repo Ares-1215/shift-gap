@@ -181,6 +181,36 @@ table.tbl tr.click{cursor:pointer}
 .help{font-size:12.5px;color:var(--muted);line-height:1.6}
 .help li{margin:2px 0}
 details summary{cursor:pointer;color:var(--accent);font-size:13px}
+/* 網站共用資料：通行碼閘門、狀態列、管理碼、提示 */
+.gate{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px}
+.gate.off{display:none}
+.gbox{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:28px 26px;width:100%;max-width:380px;text-align:center}
+.gbox .brand{justify-content:center}
+.gbox h3{margin:14px 0 4px;font-size:17px}
+.gbox p{margin:0 0 14px;color:var(--muted);font-size:13px}
+.gbox input{width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-size:20px;text-align:center;letter-spacing:6px;background:var(--surface-2);color:var(--text)}
+.gbox .btn.primary{width:100%;justify-content:center;margin-top:10px;padding:11px}
+.gbox .err{color:var(--warn);font-size:12.5px;min-height:18px;margin-top:8px}
+.gbox .skip{display:block;margin-top:14px;font-size:12px;color:var(--muted)}
+.cloud{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--accent-soft);margin-bottom:12px;font-size:13px}
+.cloud .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);display:inline-block;flex:none}
+.cloud .dot.on{background:var(--ok)}.cloud .dot.err{background:var(--warn)}
+.cloud .grow{flex:1;min-width:200px}
+.cloud details{width:100%}
+.cloud table{font-size:12px;border-collapse:collapse;margin-top:6px;width:100%}
+.cloud td,.cloud th{padding:4px 8px 4px 0;text-align:left;border-bottom:1px solid var(--border);vertical-align:middle}
+.cloud th{color:var(--muted);font-weight:500}
+.cloud .btn{padding:4px 10px;font-size:12px}
+.file .cl{font-size:11.5px;border-radius:6px;padding:1px 7px;background:var(--ok-soft);color:var(--ok);white-space:nowrap}
+.file .cl.local{background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13px;z-index:120;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1}
+.seg.gap.tail{background:repeating-linear-gradient(135deg,var(--gap-soft) 0 6px,transparent 6px 10px);border-style:dotted}
+.seg.gap.tail.big{background:repeating-linear-gradient(135deg,var(--gap) 0 6px,color-mix(in srgb,var(--gap) 60%,transparent) 6px 10px)}
+.abox{max-width:420px!important}
+.abox label{display:block;font-size:12px;color:var(--muted);margin-top:10px}
+.abox input{width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 11px;background:var(--surface-2);color:var(--text);margin-top:4px}
+.abox .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 @media (max-width:720px){
   .wrap{padding:0 12px 40px}
   .brand small{display:none}
@@ -200,10 +230,11 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
 
 <div class="wrap">
   <section class="card" id="uploadCard">
-    <h2>1. 上傳班次表 <span class="n">支援運務通知 .docx（內嵌班次表）或班次表 .xlsx，可一次多檔（例如 11/5、11/6）</span></h2>
+    <h2>班次表 <span class="n">網站共用：輸入管理碼上傳後，同事開網站就自動載入；同一天再上傳會覆蓋舊檔</span></h2>
+    <div class="cloud" id="cloud"></div>
     <div class="drop" id="drop">
-      <strong>把檔案拖到這裡，或點一下選擇檔案</strong>
-      <p>檔案只在你的瀏覽器裡解析，不會上傳到任何伺服器。只讀「曳引車」「全拖車」兩個分頁；綠底（刪減）班次自動排除，白底＋黃底視為調整後班表。</p>
+      <strong>把運務通知 .docx（內嵌班次表）或班次表 .xlsx 拖到這裡，或點一下選擇（可多檔）</strong>
+      <p>只讀「曳引車」「全拖車」兩個分頁；綠底（刪減）班次自動排除，白底＋黃底視為調整後班表。有管理碼就存到網站，沒有就只在這台瀏覽器分析。</p>
       <input type="file" id="fileInput" multiple accept=".docx,.xlsx" hidden>
     </div>
     <div class="progress" id="prog"><i></i></div>
@@ -212,7 +243,7 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
     <div class="needsbox" id="needsBox">
       <div class="drop small" id="needsDrop">
         <strong>加班需求清單（選填）</strong>
-        <p>CSV 或 Excel：欄位「起站、迄站」必填，「日期(MMDD)、時間中位 或 時間窗起/時間窗迄(HHMM)、機率、等級、預估櫃數、常見班次」選填。本機工具 <code>tools/ot_forecast.py</code> 會從歷史加班產出這份清單。</p>
+        <p>CSV 或 Excel：欄位「起站、迄站」必填，「日期(MMDD)、時間中位 或 時間窗起/時間窗迄(HHMM)、機率、等級、預估櫃數、常見班次」選填。本機工具 <code>tools/ot_forecast.py</code> 會從歷史加班產出這份清單；每日排程會自動推到網站，手動上傳也會存到網站（需管理碼）。</p>
         <input type="file" id="needsInput" accept=".csv,.xlsx" hidden>
       </div>
       <div class="files" id="needsFiles"></div>
@@ -222,6 +253,7 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
       <label class="field">掛卸作業緩衝（分鐘，來回合計）<input type="number" id="pBuf" value="30" min="0" step="5"></label>
       <label class="field">站間車程下限（分鐘）<input type="number" id="pLeg" value="5" min="0" step="5"></label>
       <label class="field">同場域（同一地點，車程 0 分）<input type="text" id="pYards" value="彰化=秀水；中工=西屯" style="min-width:220px" title="用「=」連同一地點的站，不同組用「；」分開"></label>
+      <label class="field">收班後可用（分鐘）<input type="number" id="pTail" value="180" min="0" step="30" title="最後一班到站後，這段時間內仍視為在站待命可跑加班；0＝不計"></label>
       <button class="btn" id="recalc">重新計算</button>
     </div>
   </section>
@@ -272,7 +304,7 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
         <label class="field">站所<select id="fStation"><option value="">全部</option></select></label>
         <label class="field">最少分鐘<input type="number" id="fMinDur" value="60" step="10" style="width:90px"></label>
         <label class="field">車頭搜尋<input type="text" id="fQ" placeholder="代號／名稱／車廂" style="width:150px"></label>
-        <label class="field" style="flex-direction:row;align-items:center;gap:6px;padding-bottom:8px"><input type="checkbox" id="fBetween" checked>只看兩班之間（排除日初待命／日末）</label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:6px;padding-bottom:8px"><input type="checkbox" id="fBetween" checked>排除日初待命（前無班次；收班待命照列）</label>
         <label class="field" style="flex-direction:row;align-items:center;gap:6px;padding-bottom:8px"><input type="checkbox" id="fHasCand">只看有可跑站所</label>
       </div>
       <div class="small muted" id="gapCount" style="margin-bottom:8px"></div>
@@ -283,7 +315,7 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
       <div class="filters">
         <div class="field">日期<div class="chips" id="sDays"></div></div>
         <label class="field">時刻查詢（HHMM，看此刻誰在站）<input type="text" id="sNow" placeholder="例 2100" style="width:110px" maxlength="4"></label>
-        <label class="field" style="flex-direction:row;align-items:center;gap:6px;padding-bottom:8px"><input type="checkbox" id="sBetween" checked>只看兩班之間</label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:6px;padding-bottom:8px"><input type="checkbox" id="sBetween" checked>排除日初待命</label>
       </div>
       <div class="stlist" id="stList"></div>
       <div id="stDetail"></div>
@@ -297,7 +329,7 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
         <label class="field">車頭搜尋<input type="text" id="tQ" placeholder="代號／名稱" style="width:150px"></label>
         <label class="field" style="flex-direction:row;align-items:center;gap:6px;padding-bottom:8px"><input type="checkbox" id="tOnlyGap" checked>只列有空檔的車頭</label>
       </div>
-      <div class="legend"><span><i style="background:var(--leg-soft);border:1px solid var(--leg)"></i>原班次</span><span><i style="background:var(--leg-new-soft);border:1px solid var(--leg-new)"></i>新增／調整班次</span><span><i style="background:var(--gap-soft);border:1px dashed var(--gap)"></i>空檔（≥門檻）</span><span><i style="border:1px dotted var(--border)"></i>短暫停留</span></div>
+      <div class="legend"><span><i style="background:var(--leg-soft);border:1px solid var(--leg)"></i>原班次</span><span><i style="background:var(--leg-new-soft);border:1px solid var(--leg-new)"></i>新增／調整班次</span><span><i style="background:var(--gap-soft);border:1px dashed var(--gap)"></i>空檔（≥門檻）</span><span><i style="border:1px dotted var(--border)"></i>短暫停留</span><span><i style="background:repeating-linear-gradient(135deg,var(--gap-soft) 0 4px,transparent 4px 7px);border:1px dotted var(--gap)"></i>收班待命</span></div>
       <div class="small muted" id="tCount" style="margin-bottom:8px"></div>
       <div class="gantt" id="tGantt"></div>
     </section>
@@ -327,6 +359,8 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
     <li><b>底色</b>：白＝原班次、黃＝新增或調整的班次、綠＝刪減班次（排除不計）。分析的是「調整後」班表。</li>
     <li><b>空檔</b>：同一台車頭相鄰兩個時間點在同一站，停留分鐘 ≥ 門檻。跨午夜依序列自動加一天。</li>
     <li><b>日初待命</b>：空檔起點前沒有班次代號（司機報到後等出車，或「放空櫃」類同站作業），預設排除，可勾選顯示。</li>
+    <li><b>收班待命</b>：車頭跑完當天最後一班、後面沒有班次後，從到站起 N 分內（預設 180 分，參數可調，0＝不計）仍視為在站待命可跑加班；看板、清單、配車都會列入並標「收班待命」。</li>
+    <li><b>網站共用資料</b>：看板通行碼可看；管理碼才能上傳、覆蓋、刪除。上傳的班次表與加班清單存在網站，開網站自動載入「昨天起兩週內」日期的班次表（跨午夜的班次要看前一天那份）；同一天再上傳即覆蓋；超過 21 天自動清除。</li>
     <li><b>站間車程</b>：由上傳的所有班表中實際班次的「出發→到達」時間差取中位數（下限可調），沒有官方里程表時的替代值。</li>
     <li><b>可跑站所</b>：去程＋回程＋掛卸作業緩衝 ≤ 空檔分鐘，依來回合計由近到遠排列；括號內為來回合計分鐘。缺少車程樣本的站所不會出現。</li>
     <li><b>標記</b>：雙駕駛、班次備註（如「含休息時間」）、前後班次有調整，請調度時自行判斷是否可用。</li>
@@ -334,6 +368,23 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
     <li><b>Excel</b>：說明／空檔_日期／站所別_日期／時間軸_日期／站間車程（有需求清單時加 加班配車_日期／加班需求_日期），與網頁同一套計算。</li>
   </ul>
 </div></div>
+
+<div class="gate" id="gate"><div class="gbox">
+  <div class="brand"><div class="logo">🚛</div><div>班次空檔分析<small>派車看板</small></div></div>
+  <h3>輸入看板通行碼</h3><p>同事輸入一次即可，這台裝置會記住。</p>
+  <input id="gCode" type="password" inputmode="numeric" autocomplete="off" placeholder="••••">
+  <button class="btn primary" id="gGo">進入</button>
+  <div class="err" id="gErr"></div>
+  <a href="#" class="skip" id="gSkip">略過：不載入網站資料，只分析自己上傳的檔案</a>
+</div></div>
+<div class="modal" id="adminModal"><div class="box abox">
+  <h3>管理碼</h3><div class="muted small" id="aWhy"></div>
+  <label>管理碼<input id="aCode" type="password" inputmode="numeric" autocomplete="off"></label>
+  <label>署名（選填，顯示在上傳紀錄）<input id="aUser" type="text" maxlength="20" placeholder="例：阿瑞"></label>
+  <div class="small" id="aErr" style="color:var(--warn);min-height:18px;margin-top:6px"></div>
+  <div class="acts"><button class="btn" id="aCancel">只在本機分析</button><button class="btn primary" id="aOk">確定</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
 
 <script>
 /* ===================== 工具 ===================== */
@@ -381,6 +432,39 @@ function parseTime(v) {
 // 營運時間：以 12:00 為一天起點（12:00→720、03:10→1630），讓跨午夜的排序與時間軸一致
 const opT = m => ((m % 1440) - 720 + 1440) % 1440 + 720;
 const labelOf = name => { const m = /(1[0-2]|0?[1-9])(0[1-9]|[12]\d|3[01])(?!\d)/.exec(name); return m ? m[0] : name.replace(/\.[^.]+$/, ''); };
+
+/* ===================== 網站共用資料（Supabase Edge Function shiftgap；看板碼可看、管理碼可傳） ===================== */
+const CLOUD_FN = 'https://hmqnlovyzlvvnkqmfwtt.supabase.co/functions/v1/shiftgap';
+const C = { role: null, code: null, admin: null, user: '', files: [], loading: false, err: null };
+async function cloud(action, payload = {}, { admin = false } = {}) {
+  const code = admin ? (C.admin || '') : (C.code || C.admin || '');
+  let r; try { r = await fetch(CLOUD_FN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, code, ...payload }) }); }
+  catch (e) { const err = new Error('無法連線'); err.status = 0; throw err; }
+  let j = null; try { j = await r.json(); } catch (e) {}
+  if (!r.ok) { const err = new Error((j && j.error) || `HTTP ${r.status}`); err.status = r.status; throw err; }
+  return j;
+}
+const fileToB64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(r.error || new Error('讀檔失敗')); r.readAsDataURL(f); });
+function b64toBuf(b64) { const bin = atob(b64); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return u8.buffer; }
+const fmtTime = iso => { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+function defaultDays() { const s = new Set(); const n = new Date(); for (let i = -1; i <= 14; i++) { const d = new Date(n.getFullYear(), n.getMonth(), n.getDate() + i); s.add(String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0')); } return s; }
+const needsKeyOf = days => !days.length ? null : days.length <= 4 ? days.join('-') : days[0] + '-' + days[days.length - 1];
+let toastTimer = null;
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2800); }
+/* 班次表存網站的格式：解析後的車頭資料 JSON（gzip），每天約 100KB，不存 4MB 的原始 Excel */
+const utf8 = { enc: s => new TextEncoder().encode(s), dec: b => new TextDecoder().decode(b) };
+function bufToB64(buf) { const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf); let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+const canGzip = typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
+async function gzipB64(str) {
+  if (!canGzip) return { data: bufToB64(utf8.enc(str)), mime: 'application/json' };
+  const buf = await new Response(new Blob([utf8.enc(str)]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+  return { data: bufToB64(buf), mime: 'application/json+gzip' };
+}
+async function unpackJSON(b64, mime) {
+  const buf = b64toBuf(b64);
+  if (/gzip/.test(mime || '')) { if (!canGzip) throw new Error('這個瀏覽器不支援解壓縮，請用 Edge／Chrome'); return JSON.parse(utf8.dec(await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer())); }
+  return JSON.parse(utf8.dec(buf));
+}
 
 /* ===================== OLE (CFB) 讀取：docx 內的 oleObject.bin → package(xlsx) ===================== */
 function cfbExtract(buf, wantName) {
@@ -558,6 +642,9 @@ function buildTimeline(t) {
     else legs.push({ from: a.station, to: b.station, start: a.abs, end: b.abs, dur, code: a.shiftCode, trailer: a.trailer, note: a.note,
       color: (a.color === 'yellow' || b.color === 'yellow' || a.shiftColor === 'yellow') ? 'yellow' : 'white' });
   }
+  // 收班待命：最後一班到站後 tail 分內仍視為在站可跑加班（使用者 2026-11-05：跑完當天班次、後面沒班也可以跑加班）
+  const tail = state.params.tail; let li = -1; for (let i = seq.length - 1; i >= 0; i--) if (seq[i].abs != null && seq[i].station) { li = i; break; }
+  if (tail > 0 && li >= 0) { const a = seq[li]; gaps.push({ station: yardOf(a.station), arriveAt: a.station, departFrom: a.station, start: a.abs, end: a.abs + tail, dur: tail, prevPt: a, nextPt: null, prev: prevLeg(seq, li), next: null, tail: true }); }
   t.seq = seq; t.legs = legs; t.gaps = gaps; t.active = t.color !== 'green' && seq.length > 0;
   t.double = !!(t.remark && String(t.remark).includes('雙駕駛'));
   t.first = seq.find(p => p.abs != null)?.abs ?? null; t.last = [...seq].reverse().find(p => p.abs != null)?.abs ?? null;
@@ -566,7 +653,7 @@ function prevLeg(seq, i) { const a = seq[i]; if (a.shiftCode == null && a.traile
 function nextLeg(seq, i) { const b = seq[i]; if (b.shiftCode == null && b.trailer == null) return null; let to = null; for (let j = i; j < seq.length - 1; j++) if (yardOf(seq[j + 1].station) !== yardOf(seq[j].station)) { to = seq[j + 1].station; break; } return { to, code: b.shiftCode, trailer: b.trailer, note: b.note }; }
 
 /* ===================== 分析 ===================== */
-const state = { days: [], params: { minGap: 60, buffer: 30, minLeg: 5, maxLeg: 600, sameRT: 60 }, matrix: new Map(), rows: [], sort: { key: 'default', dir: 1 }, tab: 'gaps', station: null, needs: [], needsFile: null, matched: [] };
+const state = { days: [], params: { minGap: 60, buffer: 30, minLeg: 5, maxLeg: 600, sameRT: 60, tail: 180 }, matrix: new Map(), rows: [], sort: { key: 'default', dir: 1 }, tab: 'gaps', station: null, needs: [], needsFiles: [], matched: [] };
 function travelMatrix() {
   // 以「場域」為單位（彰化／秀水視為同一點），同場域之間不計
   const samples = new Map();
@@ -586,7 +673,7 @@ function candidates(station, gap) {
   return out;
 }
 function recompute() {
-  state.params.minGap = +$('#pMin').value || 60; state.params.buffer = +$('#pBuf').value || 0; state.params.minLeg = +$('#pLeg').value || 0;
+  state.params.minGap = +$('#pMin').value || 60; state.params.buffer = +$('#pBuf').value || 0; state.params.minLeg = +$('#pLeg').value || 0; state.params.tail = Math.max(0, +$('#pTail').value || 0);
   setYards($('#pYards').value); try { localStorage.setItem('sg_yards', $('#pYards').value); } catch (e) {}
   for (const d of state.days) for (const t of d.tractors) buildTimeline(t);   // 空檔依同場域重算
   state.matrix = travelMatrix();
@@ -594,14 +681,14 @@ function recompute() {
   for (const d of state.days) for (const t of d.tractors) { if (!t.active) continue;
     for (const g of t.gaps) { if (g.dur < state.params.minGap) continue;
       const flags = [];
-      if (!g.prev) flags.push('日初待命(前無班次)'); if (!g.next) flags.push('日末(後無班次)');
+      if (!g.prev && !g.tail) flags.push('日初待命(前無班次)'); if (g.tail) flags.push('收班待命(最後一班後)'); else if (!g.next) flags.push('日末(後無班次)');
       if (t.double) flags.push('雙駕駛');
       for (const x of [g.prev, g.next]) if (x && x.note) flags.push('備註:' + x.note);
-      if (g.prevPt.color === 'yellow' || g.nextPt.color === 'yellow') flags.push('前後班次有調整');
+      if (g.prevPt.color === 'yellow' || (g.nextPt && g.nextPt.color === 'yellow')) flags.push('前後班次有調整');
       if (g.arriveAt !== g.departFrom) flags.push(`到${g.arriveAt}、由${g.departFrom}出車`);
       const pl = placeOf(g.station); if (pl) flags.push(pl.tag + '：' + pl.note);
       rows.push({ day: d.label, kind: t.kind, unit: t.unit, code: t.code, name: t.name, remark: t.remark, station: g.station, start: g.start, end: g.end, dur: g.dur, op: opT(g.start),
-        prev: g.prev, next: g.next, cands: candidates(g.station, g.dur), flags, between: !!(g.prev && g.next), tractor: t });
+        prev: g.prev, next: g.next, cands: candidates(g.station, g.dur), flags, between: !!(g.prev && g.next), tail: !!g.tail, tractor: t });
     } }
   state.rows = rows;
   state.matched = matchNeeds();
@@ -663,7 +750,7 @@ function matchNeeds() {
 }
 const N = { days: new Set(), tiers: new Set() };
 const TIER_ORDER = { '幾乎每週': 0, '很可能': 1, '偶發': 2 };
-function candFlags(c) { const t = c.tractor, g = c.gap; const f = []; if (!g.prev) f.push('日初待命'); if (t.double) f.push('雙駕駛'); for (const x of [g.prev, g.next]) if (x && x.note) f.push('備註:' + x.note); return f; }
+function candFlags(c) { const t = c.tractor, g = c.gap; const f = []; if (!g.prev && !g.tail) f.push('日初待命'); if (g.tail) f.push('收班待命'); if (t.double) f.push('雙駕駛'); for (const x of [g.prev, g.next]) if (x && x.note) f.push('備註:' + x.note); return f; }
 function renderNeeds() {
   const has = state.matched.length > 0; $('#needsTab').style.display = has ? '' : 'none'; if (!has) { if (state.tab === 'needs') $('#tabs .tab[data-t="gaps"]').click(); return; }
   const labels = [...new Set(state.matched.map(m => m.day))]; chips($('#nDays'), labels, N.days, renderNeedsTable);
@@ -676,7 +763,7 @@ function renderNeedsTable() {
     .filter(m => (!N.days.size || N.days.has(m.day)) && (!N.tiers.size || N.tiers.has(m.need.tier)) && (!q || m.need.from.includes(q) || m.need.to.includes(q)) && (!hc || m.cands.length));
   list.sort((a, b) => a.day.localeCompare(b.day) || (TIER_ORDER[a.need.tier] ?? 9) - (TIER_ORDER[b.need.tier] ?? 9) || (parseFloat(b.need.prob) || 0) - (parseFloat(a.need.prob) || 0) || (parseFloat(b.need.boxes) || 0) - (parseFloat(a.need.boxes) || 0));
   const withC = list.filter(m => m.cands.length).length;
-  $('#nCount').textContent = `${list.length} 條需求，${withC} 條找得到車頭（${state.needsFile || ''}）`;
+  $('#nCount').textContent = `${list.length} 條需求，${withC} 條找得到車頭（${state.needsFiles.map(f => f.name).join('、')}）`;
   $('#nTbl tbody').innerHTML = list.map((m, i) => { const nd = m.need; const win = nd.tmed != null ? `${hhmm(nd.t1)}–${hhmm(nd.t2)}` : '全日';
     const uniq = []; const seen = new Set(); for (const c of m.cands) { const k = c.tractor.code + c.pattern[0]; if (seen.has(k)) continue; seen.add(k); uniq.push(c); }
     const candHtml = m.cands.length ? `<div class="cand">${uniq.slice(0, 8).map(c => `<span class="tag ${c.pattern[0] === 'B' ? 'new' : 'ok'}" data-i="${i}" data-code="${esc(c.tractor.code)}" title="${esc(c.tractor.name)}｜${esc(c.gap.station)} ${hhmm(c.gap.start)}–${hhmm(c.gap.end)}｜可出發 ${hhmm(c.lo)}–${hhmm(c.hi)}">${c.pattern[0]} ${esc(c.tractor.code)} ${esc(c.tractor.name)}</span>`).join('')}${uniq.length > 8 ? `<span class="tag">+${uniq.length - 8}</span>` : ''}</div>
@@ -685,39 +772,107 @@ function renderNeedsTable() {
     return `<tr><td>${esc(m.day)}</td><td><b>${esc(nd.from)} → ${esc(nd.to)}</b>${nd.note ? `<div class="small muted">${esc(nd.note)}</div>` : ''}</td><td><span class="tag ${nd.tier === '幾乎每週' ? 'ok' : nd.tier === '很可能' ? 'new' : ''}">${esc(nd.tier || '')}</span></td><td class="mono">${esc(nd.prob)}</td><td class="mono">${esc(nd.boxes)}</td><td class="mono">${win}</td><td class="small">${esc(nd.names)}</td><td class="mono small">${m.tST != null ? `${Math.round(m.tST)}/${Math.round(m.tTS)}${m.known ? '' : '（估）'}` : '—'}</td><td>${candHtml}</td></tr>`; }).join('') || '<tr><td colspan="9" class="empty">沒有符合條件的需求</td></tr>';
   $('#nTbl tbody').querySelectorAll('.cand .tag[data-code]').forEach(el => el.onclick = () => { const m = list[+el.dataset.i]; const c = m.cands.find(x => x.tractor.code === el.dataset.code); if (c) openTractor(c.tractor, m.day); });
 }
-async function setNeedsFile(file) {
-  const al = $('#alert');
-  try { state.needs = await readNeedsFile(file); state.needsFile = file.name; al.style.display = 'none'; }
+async function addNeedsFile(file, opts = {}) {
+  const al = $('#alert'); let needs;
+  try { needs = await readNeedsFile(file); al.style.display = 'none'; }
   catch (e) { al.style.display = 'block'; al.textContent = `「${file.name}」讀取失敗：${e.message}`; return; }
-  renderNeedsFiles(); recompute();
+  const days = [...new Set(needs.map(n => n.day).filter(Boolean))].sort();
+  const entry = { name: file.name, needs, days, key: opts.key || null, uploaded_at: opts.uploaded_at || new Date().toISOString(), uploader: opts.uploader || null, srcFile: file };
+  const same = state.needsFiles.findIndex(f => f.name === file.name || (f.key && f.key === entry.key));
+  if (same >= 0) state.needsFiles[same] = entry; else state.needsFiles.push(entry);
+  mergeNeeds(); renderNeedsFiles(); recompute();
+  if (opts.save !== false) await saveNeeds(entry);
+}
+function mergeNeeds() {
+  // 同一個日期以最新上傳的清單為準；沒寫日期的列只取最新一份
+  const files = [...state.needsFiles].sort((a, b) => String(b.uploaded_at).localeCompare(String(a.uploaded_at)));
+  const out = [], done = new Set();
+  files.forEach((f, i) => { for (const n of f.needs) { if (!n.day) { if (i === 0) out.push(n); } else if (!done.has(n.day)) out.push(n); } for (const d of f.days) done.add(d); });
+  state.needs = out;
+}
+async function saveNeeds(entry) {
+  if (!C.role) { toast('未登入網站：清單只在這台瀏覽器使用'); return; }
+  if (!(await askAdmin('要把加班需求清單存到網站給大家用，請輸入管理碼'))) return;
+  const day = needsKeyOf(entry.days) || labelOf(entry.name).replace(/[^0-9A-Za-z_-]/g, '').slice(0, 24) || 'latest';
+  try { const j = await cloud('put', { kind: 'needs', day, name: entry.name, data: await fileToB64(entry.srcFile), summary: { days: entry.days, rows: entry.needs.length }, uploader: C.user }, { admin: true });
+    entry.key = j.key; entry.uploaded_at = j.uploaded_at; entry.uploader = C.user; toast('加班需求清單已存到網站'); }
+  catch (e) { const al = $('#alert'); al.style.display = 'block'; al.textContent = `「${entry.name}」存到網站失敗：${e.message}`; if (e.status === 403) forgetAdmin(); }
+  await refreshList(); renderNeedsFiles();
 }
 function renderNeedsFiles() {
   const box = $('#needsFiles'); box.innerHTML = '';
-  if (!state.needsFile) return;
-  const el = document.createElement('div'); el.className = 'file';
-  const tiers = state.needs.reduce((m, n) => { const k = n.tier || '未分級'; m[k] = (m[k] || 0) + 1; return m; }, {});
-  el.innerHTML = `<span>📋</span><span class="name">${esc(state.needsFile)}</span><span class="meta">需求 ${state.needs.length} 條（${Object.entries(tiers).map(([k, v]) => `${k} ${v}`).join('、')}）</span><button class="btn ghost x" title="移除">✕</button>`;
-  el.querySelector('.x').onclick = () => { state.needs = []; state.needsFile = null; renderNeedsFiles(); recompute(); };
-  box.appendChild(el);
+  state.needsFiles.forEach((f, i) => {
+    const el = document.createElement('div'); el.className = 'file';
+    const tiers = f.needs.reduce((m, n) => { const k = n.tier || '未分級'; m[k] = (m[k] || 0) + 1; return m; }, {});
+    el.innerHTML = `<span>📋</span><span class="name">${esc(f.name)}</span><span class="meta">需求 ${f.needs.length} 條（${Object.entries(tiers).map(([k, v]) => `${k} ${v}`).join('、')}）${f.days.length ? '・' + f.days.join('、') : ''}</span>
+      ${f.key ? `<span class="cl" title="${esc(f.key)}">☁ 網站 ${fmtTime(f.uploaded_at)}${f.uploader ? '・' + esc(f.uploader) : ''}</span>` : `<span class="cl local">本機</span>${C.role ? `<button class="btn ghost save" title="存到網站（需管理碼）">☁ 存到網站</button>` : ''}`}
+      <button class="btn ghost x" title="從畫面移除（不會刪網站上的檔案）">✕</button>`;
+    el.querySelector('.x').onclick = () => { state.needsFiles.splice(i, 1); mergeNeeds(); renderNeedsFiles(); recompute(); renderCloud(); };
+    const sv = el.querySelector('.save'); if (sv) sv.onclick = () => saveNeeds(f);
+    box.appendChild(el);
+  });
 }
 
 /* ===================== 檔案處理 ===================== */
-async function addFiles(files) {
+/* 原始解析結果（存網站用；Python tools/export_day.py 產出同樣結構，col 可為字母） */
+const RAW_T = ['row', 'unit', 'idx', 'mileage', 'code', 'name', 'color', 'remark', 'kind'];
+function rawTractors(tractors) {
+  return tractors.map(t => { const o = {}; for (const k of RAW_T) o[k] = t[k] ?? null;
+    o.blocks = t.blocks.map(b => ({ row: b.row, owner: b.owner ?? null, points: b.points.map(p => ({ col: p.col, time: p.time, station: p.station, color: p.color, shift: p.shift ?? null })), shifts: b.shifts.map(s => ({ col: s.col, code: s.code ?? null, trailer: s.trailer ?? null, color: s.color, note: s.note ?? null })) }));
+    return o; });
+}
+const colNum = c => typeof c === 'string' ? colIdx(c.toUpperCase()) : c;
+function makeDay(label, file, tractors, meta) {
+  const day = { label, file, tractors: [], cloud: meta || null }; let unit = null;
+  for (const raw of tractors) {
+    const t = { ...raw, code: String(raw.code), blocks: (raw.blocks || []).map(b => ({ ...b, points: (b.points || []).map(p => ({ ...p, col: colNum(p.col), time: typeof p.time === 'number' ? p.time : null, station: p.station != null ? String(p.station) : null, shift: p.shift != null ? String(p.shift) : null })), shifts: (b.shifts || []).map(s => ({ ...s, col: colNum(s.col), code: s.code != null ? String(s.code) : null })) })) };
+    if (t.unit) unit = t.unit; t.unit = unit; buildTimeline(t); day.tractors.push(t);
+  }
+  return day;
+}
+function putDay(day, opts = {}) {
+  const idx = state.days.findIndex(d => d.label === day.label);
+  if (idx >= 0) { state.days[idx] = day; if (opts.save !== false) toast(`已用「${day.file}」覆蓋 ${day.label} 的班次表`); } else state.days.push(day);
+  state.days.sort((a, b) => a.label.localeCompare(b.label));
+}
+function addDayObj(obj, meta) {
+  const label = (meta && meta.day) || obj.label || labelOf(obj.file || '');
+  const day = makeDay(label, obj.file || (meta && meta.name) || label, obj.tractors || [], meta);
+  putDay(day, { save: false }); return day;
+}
+async function addFiles(files, opts = {}) {
   const prog = $('#prog'), al = $('#alert'); prog.style.display = 'block'; al.style.display = 'none';
-  for (const f of files) {
+  const added = [];
+  for (const [i, f] of [...files].entries()) {
     try {
       const xbuf = await extractXlsx(f);
       const wb = await readWorkbook(xbuf, ['曳引車', '全拖車']);
       if (!wb['曳引車'] && !wb['全拖車']) throw new Error('找不到「曳引車」或「全拖車」分頁');
-      let label = labelOf(f.name); const used = new Set(state.days.map(d => d.label)); let k = 2; const base = label; while (used.has(label)) label = base + '-' + (k++);
-      const day = { label, file: f.name, tractors: [] };
-      for (const sheet of ['曳引車', '全拖車']) { if (!wb[sheet]) continue; const trs = parseSheet(wb[sheet]); let unit = null;
-        for (const t of trs) { if (t.unit) unit = t.unit; t.unit = unit; t.kind = sheet; buildTimeline(t); day.tractors.push(t); } }
-      state.days.push(day);
+      const meta = (opts.cloud && opts.cloud[i]) || null;
+      const trs = [];
+      for (const sheet of ['曳引車', '全拖車']) { if (!wb[sheet]) continue; for (const t of parseSheet(wb[sheet])) { t.kind = sheet; trs.push(t); } }
+      const day = makeDay((meta && meta.day) || labelOf(f.name), f.name, trs, meta);
+      putDay(day, opts); added.push(day);
     } catch (e) { console.error(e); al.style.display = 'block'; al.textContent = `「${f.name}」讀取失敗：${e.message}`; }
   }
   prog.style.display = 'none';
   renderFiles(); recompute();
+  if (opts.save !== false && added.length) await saveDays(added);
+}
+async function saveDays(days) {
+  if (!C.role) { toast('未登入網站：班次表只在這台瀏覽器分析'); return; }
+  if (!(await askAdmin('要把班次表存到網站，同事開網站就會自動載入；請輸入管理碼'))) return;
+  for (const day of days) {
+    let key = day.label;
+    if (!/^[0-9A-Za-z_-]{1,24}$/.test(key)) { key = (window.prompt(`「${day.file}」的檔名看不出日期，請輸入這份班次表的日期（MMDD）`, '') || '').trim(); if (!/^[0-9A-Za-z_-]{1,24}$/.test(key)) continue; day.label = key; }
+    try { const act = day.tractors.filter(t => t.active);
+      const summary = { tractors: act.length, trac: act.filter(t => t.kind === '曳引車').length, full: act.filter(t => t.kind === '全拖車').length, gaps: state.rows.filter(r => r.day === day.label && r.between).length };
+      const { data, mime } = await gzipB64(JSON.stringify({ v: 1, label: key, file: day.file, tractors: rawTractors(day.tractors) }));
+      const j = await cloud('put', { kind: 'schedule', day: key, name: day.file, data, mime, summary, uploader: C.user }, { admin: true });
+      day.cloud = { key: j.key, day: key, uploaded_at: j.uploaded_at, uploader: C.user }; toast(`${key} 班次表已存到網站（${Math.round(j.size / 1024)} KB）`); }
+    catch (e) { const al = $('#alert'); al.style.display = 'block'; al.textContent = `「${day.file}」存到網站失敗：${e.message}`; if (e.status === 403) forgetAdmin(); }
+  }
+  await refreshList(); renderFiles(); recompute();
 }
 function renderFiles() {
   const box = $('#files'); box.innerHTML = '';
@@ -727,11 +882,94 @@ function renderFiles() {
     el.innerHTML = `<span>📄</span><span class="name" title="${esc(d.file)}">${esc(d.file)}</span>
       <span class="meta">日期標籤 <input class="label" value="${esc(d.label)}" data-i="${i}"></span>
       <span class="meta">車頭 ${act.length} 台（曳引車 ${act.filter(t => t.kind === '曳引車').length}／全拖車 ${act.filter(t => t.kind === '全拖車').length}）${del ? `，整台刪減 ${del}` : ''}</span>
-      <button class="btn ghost x" data-i="${i}" title="移除">✕</button>`;
+      ${d.cloud ? `<span class="cl" title="${esc(d.cloud.key)}">☁ 網站 ${fmtTime(d.cloud.uploaded_at)}${d.cloud.uploader ? '・' + esc(d.cloud.uploader) : ''}</span>` : `<span class="cl local">本機</span>${C.role ? `<button class="btn ghost save" data-i="${i}" title="存到網站（需管理碼）">☁ 存到網站</button>` : ''}`}
+      <button class="btn ghost x" data-i="${i}" title="從畫面移除（不會刪網站上的檔案）">✕</button>`;
     box.appendChild(el);
   }
-  box.querySelectorAll('input.label').forEach(inp => inp.addEventListener('change', e => { const d = state.days[+e.target.dataset.i]; d.label = e.target.value.trim() || d.label; for (const r of state.rows) if (r.tractor && state.days.includes(d)) {} recompute(); }));
-  box.querySelectorAll('button.x').forEach(b => b.addEventListener('click', e => { state.days.splice(+e.currentTarget.dataset.i, 1); renderFiles(); recompute(); }));
+  box.querySelectorAll('input.label').forEach(inp => inp.addEventListener('change', e => { const d = state.days[+e.target.dataset.i]; d.label = e.target.value.trim() || d.label; recompute(); }));
+  box.querySelectorAll('button.save').forEach(b => b.addEventListener('click', e => saveDays([state.days[+e.currentTarget.dataset.i]])));
+  box.querySelectorAll('button.x').forEach(b => b.addEventListener('click', e => { state.days.splice(+e.currentTarget.dataset.i, 1); renderFiles(); recompute(); renderCloud(); }));
+}
+
+/* ---- 網站共用資料：登入、載入、管理 ---- */
+function forgetAdmin() { C.admin = null; if (C.role === 'admin') C.role = C.code ? 'view' : null; try { localStorage.removeItem('sg_admin'); } catch (e) {} renderCloud(); }
+function askAdmin(why) {
+  if (C.admin) return Promise.resolve(true);
+  return new Promise(res => {
+    const m = $('#adminModal'); $('#aWhy').textContent = why || ''; $('#aErr').textContent = ''; $('#aCode').value = ''; $('#aUser').value = C.user || ''; m.classList.add('open'); setTimeout(() => $('#aCode').focus(), 50);
+    const done = v => { m.classList.remove('open'); $('#aOk').onclick = null; $('#aCancel').onclick = null; res(v); };
+    $('#aCancel').onclick = () => done(false);
+    $('#aOk').onclick = async () => { const code = $('#aCode').value.trim(); if (!code) return; $('#aOk').disabled = true;
+      try { const j = await cloud('login', { code }); if (j.role !== 'admin') throw Object.assign(new Error('這是看板碼，不是管理碼'), { status: 403 });
+        C.admin = code; C.role = 'admin'; if (!C.code) C.code = code; C.user = $('#aUser').value.trim();
+        try { localStorage.setItem('sg_admin', code); localStorage.setItem('sg_code', C.code); localStorage.setItem('sg_user', C.user); } catch (e) {}
+        renderCloud(); done(true); }
+      catch (e) { $('#aErr').textContent = e.status === 401 ? '管理碼錯誤' : e.message; }
+      $('#aOk').disabled = false; };
+  });
+}
+async function refreshList() { try { C.files = (await cloud('list')).files || []; C.err = null; } catch (e) { C.err = e.message; } renderCloud(); }
+async function loadKey(key) {
+  try { const g = await cloud('get', { key }); const meta = { key: g.key, day: g.day, name: g.name, uploaded_at: g.uploaded_at, uploader: g.uploader };
+    if (g.kind !== 'schedule') await addNeedsFile(new File([b64toBuf(g.data)], g.name), { ...meta, save: false });
+    else if (/json/.test(g.mime || '')) { addDayObj(await unpackJSON(g.data, g.mime), meta); renderFiles(); recompute(); }
+    else await addFiles([new File([b64toBuf(g.data)], g.name)], { save: false, cloud: [meta] });
+    renderCloud(); }
+  catch (e) { alert('載入失敗：' + e.message); }
+}
+async function cloudLoad() {
+  C.loading = true; C.err = null; renderCloud();
+  try {
+    C.files = (await cloud('list')).files || [];
+    const want = defaultDays();
+    let sched = C.files.filter(f => f.kind === 'schedule' && want.has(f.day));
+    if (!sched.length) sched = C.files.filter(f => f.kind === 'schedule').sort((a, b) => String(b.uploaded_at).localeCompare(String(a.uploaded_at))).slice(0, 2);
+    sched.sort((a, b) => a.day.localeCompare(b.day));
+    const days = new Set(sched.map(f => f.day));
+    const needs = C.files.filter(f => f.kind === 'needs' && ((f.summary && f.summary.days && f.summary.days.length) ? f.summary.days : [f.day]).some(d => days.has(d)));
+    for (const f of needs) { if (state.needsFiles.some(x => x.key === f.key && x.uploaded_at === f.uploaded_at)) continue;
+      const g = await cloud('get', { key: f.key }); await addNeedsFile(new File([b64toBuf(g.data)], g.name), { key: g.key, uploaded_at: g.uploaded_at, uploader: g.uploader, save: false }); }
+    const files = [], metas = []; let changed = false;
+    for (const f of sched) { if (state.days.some(d => d.cloud && d.cloud.key === f.key && d.cloud.uploaded_at === f.uploaded_at)) continue;
+      const g = await cloud('get', { key: f.key }); const meta = { key: g.key, day: g.day, name: g.name, uploaded_at: g.uploaded_at, uploader: g.uploader };
+      if (/json/.test(g.mime || '')) { addDayObj(await unpackJSON(g.data, g.mime), meta); changed = true; }
+      else { files.push(new File([b64toBuf(g.data)], g.name)); metas.push(meta); } }
+    if (files.length) await addFiles(files, { save: false, cloud: metas }); else if (changed || !state.days.length) { renderFiles(); recompute(); }
+    if (!sched.length) toast('網站上還沒有班次表，上傳一份就會存上去');
+  } catch (e) { C.err = e.message; console.error(e); }
+  C.loading = false; renderCloud();
+}
+function renderCloud() {
+  const el = $('#cloud'); if (!el) return;
+  if (!C.role) { el.innerHTML = `<span class="dot"></span><span class="grow">未登入網站資料：上傳的檔案只在這台瀏覽器分析，重新整理就不見</span><button class="btn" id="cLogin">輸入通行碼</button>`; $('#cLogin').onclick = () => showGate(); return; }
+  const sched = C.files.filter(f => f.kind === 'schedule'), needs = C.files.filter(f => f.kind === 'needs');
+  const loaded = new Set([...state.days.map(d => d.cloud && d.cloud.key), ...state.needsFiles.map(f => f.key)].filter(Boolean));
+  const status = C.loading ? '載入網站資料…' : C.err ? `網站資料連線失敗：${esc(C.err)}` : `網站上有 ${sched.length} 份班次表（${sched.map(f => f.day).join('、') || '無'}）、${needs.length} 份加班清單；已載入 ${state.days.filter(d => d.cloud).length} 份班次表`;
+  const list = [...C.files].sort((a, b) => (a.kind === b.kind ? b.day.localeCompare(a.day) : a.kind === 'schedule' ? -1 : 1));
+  el.innerHTML = `<span class="dot ${C.err ? 'err' : 'on'}"></span><span class="grow">${status}${C.role === 'admin' ? `<span class="tag ok" style="margin-left:8px">管理者${C.user ? '・' + esc(C.user) : ''}</span>` : ''}</span>
+    <button class="btn" id="cReload" title="重新從網站載入最新班次表">↻ 重新載入</button>${C.role === 'admin' ? `<button class="btn" id="cLogout" title="這台裝置不再記住管理碼">登出管理</button>` : `<button class="btn" id="cAdmin">管理碼</button>`}
+    <details><summary>網站上的檔案（${C.files.length}）</summary><table><thead><tr><th>類型</th><th>日期</th><th>檔名</th><th>內容</th><th>上傳</th><th></th></tr></thead><tbody>${list.map(f => `<tr><td>${f.kind === 'schedule' ? '班次表' : '加班清單'}</td><td><b>${esc(f.day)}</b></td><td title="${esc(f.name)}">${esc(f.name.length > 40 ? f.name.slice(0, 38) + '…' : f.name)}</td><td>${f.summary ? (f.kind === 'schedule' ? `車頭 ${f.summary.tractors ?? '?'}（曳 ${f.summary.trac ?? '?'}／全 ${f.summary.full ?? '?'}）、空檔 ${f.summary.gaps ?? '?'}` : `${f.summary.rows ?? ''} 條 ${(f.summary.days || []).join('、')}`) : ''} <span class="muted">${Math.round((f.size || 0) / 1024)} KB</span></td><td>${fmtTime(f.uploaded_at)}${f.uploader ? '・' + esc(f.uploader) : ''}</td><td style="white-space:nowrap">${loaded.has(f.key) ? '<span class="tag ok">已載入</span>' : `<button class="btn" data-load="${esc(f.key)}">載入</button>`}${C.role === 'admin' ? ` <button class="btn" data-del="${esc(f.key)}">刪除</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">還沒有檔案：上傳班次表就會存上來</td></tr>'}</tbody></table></details>`;
+  $('#cReload').onclick = () => cloudLoad();
+  const lo = $('#cLogout'); if (lo) lo.onclick = () => { forgetAdmin(); renderFiles(); renderNeedsFiles(); };
+  const ad = $('#cAdmin'); if (ad) ad.onclick = () => askAdmin('輸入管理碼後才能上傳、覆蓋、刪除網站上的檔案').then(() => { renderFiles(); renderNeedsFiles(); });
+  el.querySelectorAll('[data-load]').forEach(b => b.onclick = () => loadKey(b.dataset.load));
+  el.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { const key = b.dataset.del; if (!confirm(`確定從網站刪除 ${key}？其他人開網站就看不到這份檔案了。`)) return;
+    try { await cloud('delete', { key }, { admin: true }); toast('已從網站刪除'); for (const d of state.days) if (d.cloud && d.cloud.key === key) d.cloud = null; for (const f of state.needsFiles) if (f.key === key) f.key = null; await refreshList(); renderFiles(); renderNeedsFiles(); }
+    catch (e) { alert('刪除失敗：' + e.message); if (e.status === 403) forgetAdmin(); } });
+}
+function showGate(msg) { $('#gate').classList.remove('off'); $('#gErr').textContent = msg || ''; setTimeout(() => $('#gCode').focus(), 50); }
+function hideGate() { $('#gate').classList.add('off'); }
+async function tryLogin(code, remember) {
+  const j = await cloud('login', { code }); C.role = j.role; C.code = code; if (j.role === 'admin') C.admin = code;
+  if (remember) { try { localStorage.setItem('sg_code', code); if (j.role === 'admin') localStorage.setItem('sg_admin', code); } catch (e) {} }
+  return j;
+}
+async function initCloud() {
+  let code = null, admin = null; try { code = localStorage.getItem('sg_code'); admin = localStorage.getItem('sg_admin'); C.user = localStorage.getItem('sg_user') || ''; } catch (e) {}
+  renderCloud();
+  if (!code && !admin) { showGate(); return; }
+  try { await tryLogin(admin || code, false); if (admin && C.role !== 'admin') forgetAdmin(); hideGate(); renderCloud(); await cloudLoad(); }
+  catch (e) { if (e.status === 401) { try { localStorage.removeItem('sg_code'); localStorage.removeItem('sg_admin'); } catch (x) {} C.code = C.admin = null; showGate('通行碼已變更，請重新輸入'); } else showGate(`連不上網站資料（${e.message}），可稍後再試，或先略過`); }
 }
 
 /* ===================== 畫面 ===================== */
@@ -765,7 +1003,7 @@ function renderKpis() {
     const mins = bt.reduce((s, r) => s + r.dur, 0);
     const top = [...bt.reduce((m, r) => m.set(r.station, (m.get(r.station) || 0) + 1), new Map()).entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([s, n]) => `${s} ${n}`).join('・');
     const items = [[act.length, '車頭（在跑）', `曳引車 ${act.filter(t => t.kind === '曳引車').length}／全拖車 ${act.filter(t => t.kind === '全拖車').length}`],
-      [bt.length, `兩班之間空檔 ≥${state.params.minGap} 分`, `另有日初待命 ${rows.length - bt.length} 筆`], [(mins / 60).toFixed(1) + ' h', '空檔合計時數', `平均 ${bt.length ? Math.round(mins / bt.length) : 0} 分／筆`],
+      [bt.length, `兩班之間空檔 ≥${state.params.minGap} 分`, `另有日初待命 ${rows.filter(r => !r.between && !r.tail).length} 筆`], [rows.filter(r => r.tail).length, '收班待命車頭', `最後一班後 ${state.params.tail} 分內可派`], [(mins / 60).toFixed(1) + ' h', '空檔合計時數', `平均 ${bt.length ? Math.round(mins / bt.length) : 0} 分／筆`],
       [bt.filter(r => r.cands.length).length, '有可跑站所的空檔', `緩衝 ${state.params.buffer} 分`], [top || '—', '空檔最多的站', '兩班之間，筆數']];
     const g = document.createElement('div'); g.className = 'kpi-group';
     g.innerHTML = `<div class="kpi-title"><b>${esc(d.label)}</b><span class="muted small">${esc(d.file)}</span></div><div class="kpi-grid">${items.map(([v, l, s]) => `<div class="kpi"><div class="v ${typeof v === 'string' && v.length > 8 ? 'txt' : ''}">${v}</div><div class="l">${l}</div><div class="s">${s}</div></div>`).join('')}</div>`;
@@ -775,7 +1013,7 @@ function renderKpis() {
 function filteredRows() {
   const st = $('#fStation').value, q = $('#fQ').value.trim().toLowerCase(), md = +$('#fMinDur').value || 0, bt = $('#fBetween').checked, hc = $('#fHasCand').checked;
   return state.rows.filter(r => (!F.days.size || F.days.has(r.day)) && (!F.kinds.size || F.kinds.has(r.kind)) && (!F.units.size || F.units.has(r.unit))
-    && (!st || r.station === st) && r.dur >= md && (!bt || r.between) && (!hc || r.cands.length)
+    && (!st || r.station === st) && r.dur >= md && (!bt || r.between || r.tail) && (!hc || r.cands.length)
     && (!q || [r.code, r.name, r.prev?.trailer, r.next?.trailer, r.prev?.code, r.next?.code].some(x => x && String(x).toLowerCase().includes(q))));
 }
 const GAP_COLS = [['day', '日期'], ['kind', '車種'], ['unit', '單位'], ['code', '車頭'], ['name', '名稱'], ['station', '空檔站'], ['start', '開始'], ['end', '結束'], ['dur', '分鐘'], ['prev', '前班次（到站）'], ['next', '後班次（離站）'], ['cands', '可跑站所（來回分鐘）'], ['flags', '標記']];
@@ -793,13 +1031,13 @@ function renderGaps() {
     <td>${esc(r.day)}</td><td>${esc(r.kind)}</td><td>${esc(r.unit)}</td><td class="mono"><b>${esc(r.code)}</b></td><td>${esc(r.name)}${r.remark ? `<div class="small muted">${esc(r.remark)}</div>` : ''}</td>
     <td><b>${esc(r.station)}</b></td><td class="mono">${hhmm(r.start)}</td><td class="mono">${hhmm(r.end)}</td>
     <td class="mono"><b>${r.dur}</b><span class="bar" style="width:${Math.round(60 * Math.min(1, r.dur / maxDur))}px"></span></td>
-    <td class="small">${legText(r.prev, 'prev')}</td><td class="small">${legText(r.next, 'next')}</td>
+    <td class="small">${legText(r.prev, 'prev')}</td><td class="small">${legText(r.next, 'next', r.tail)}</td>
     <td>${r.cands.length ? r.cands.map(c => `<span class="tag st" title="去 ${c.go} 分／回 ${c.back} 分／樣本 ${c.n}">${esc(c.station)} ${Math.round(c.round)}</span>`).join('') : '<span class="muted small">—</span>'}</td>
-    <td>${r.flags.map(f => `<span class="tag ${f.includes('休息') || f.includes('日初') ? 'warn' : f.includes('調整') ? 'new' : ''}">${esc(f)}</span>`).join('')}</td></tr>`).join('') || '<tr><td colspan="13" class="empty">沒有符合條件的空檔</td></tr>';
+    <td>${r.flags.map(f => `<span class="tag ${f.includes('休息') || f.includes('日初') ? 'warn' : f.includes('收班') ? 'ok' : f.includes('調整') ? 'new' : ''}">${esc(f)}</span>`).join('')}</td></tr>`).join('') || '<tr><td colspan="13" class="empty">沒有符合條件的空檔</td></tr>';
   $('#gapTbl tbody').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => openTractor(rows[+tr.dataset.i].tractor, rows[+tr.dataset.i].day));
 }
-function legText(l, which) {
-  if (!l) return `<span class="muted">（${which === 'prev' ? '日初待命' : '日末'}）</span>`;
+function legText(l, which, tail) {
+  if (!l) return tail && which === 'next' ? '<span class="tag ok">收班待命</span><div class="muted">當天班次已跑完</div>' : `<span class="muted">（${which === 'prev' ? '日初待命' : '日末'}）</span>`;
   const route = which === 'prev' ? (l.from ? `自 ${esc(l.from)} 到站` : '同站作業後到站') : (l.to ? `離站往 ${esc(l.to)}` : '離站');
   return `<span class="mono">${esc(l.code || '')}</span> ${esc(l.trailer || '')}<div class="muted">${route}${l.note ? `｜${esc(l.note)}` : ''}</div>`;
 }
@@ -842,9 +1080,9 @@ function renderBoardNow() {
       list.sort((a, b) => (a.status === 'ok' ? 0 : 1) - (b.status === 'ok' ? 0 : 1) || b.left - a.left);
       const nOk = list.filter(x => x.status === 'ok').length; const pl = placeOf(st);
       html += `<div class="stcard"><div class="hd"><b>${esc(st)}</b>${pl ? `<span class="tag warn" title="${esc(pl.note)}">${esc(pl.tag)}</span>` : ''}<span class="cnt ${nOk ? '' : 'zero'}">${nOk} 台</span></div>`;
-      for (const a of list) { const g = a.gap, tr = a.tractor; const cands = candidates(st, a.left).slice(0, 6); const flags = []; if (!g.prev) flags.push('日初待命'); if (tr.double) flags.push('雙駕駛'); for (const x of [g.prev, g.next]) if (x && x.note) flags.push('備註:' + x.note);
-        html += `<div class="row ${a.status}" data-code="${esc(tr.code)}" data-day="${esc(B.day)}"><div class="who"><b>${esc(tr.code)}</b>${esc(tr.name)} <span class="muted">${esc(tr.kind)}・${esc(tr.unit)}</span></div><div class="left">${a.status === 'ok' ? '' : '<span class="tag warn">即將出車</span> '}空到 ${hhmm(g.end)}・<b>剩 ${a.left} 分</b></div>
-          <div class="sub">${g.next ? `下一班 <span class="mono">${esc(g.next.code || '')}</span> ${esc(g.next.trailer || '')}${g.next.to ? ' → ' + esc(g.next.to) : ''}` : '日末'}${g.departFrom && g.departFrom !== st && yardMembers(st).length > 1 ? `（由${esc(g.departFrom)}出車）` : ''}${cands.length ? '｜可跑 ' + cands.map(c => `<span class="tag st" title="去 ${c.go}／回 ${c.back}／樣本 ${c.n}">${esc(c.station)} ${Math.round(c.round)}</span>`).join('') : '｜<span class="muted">剩餘時間跑不了來回</span>'}${flags.map(f => `<span class="tag ${f.includes('日初') || f.includes('休息') ? 'warn' : ''}">${esc(f)}</span>`).join('')}</div></div>`; }
+      for (const a of list) { const g = a.gap, tr = a.tractor; const cands = candidates(st, a.left).slice(0, 6); const flags = []; if (!g.prev && !g.tail) flags.push('日初待命'); if (tr.double) flags.push('雙駕駛'); for (const x of [g.prev, g.next]) if (x && x.note) flags.push('備註:' + x.note);
+        html += `<div class="row ${a.status}" data-code="${esc(tr.code)}" data-day="${esc(B.day)}"><div class="who"><b>${esc(tr.code)}</b>${esc(tr.name)} <span class="muted">${esc(tr.kind)}・${esc(tr.unit)}</span></div><div class="left">${a.status === 'ok' ? '' : '<span class="tag warn">即將出車</span> '}${g.tail ? '可用到' : '空到'} ${hhmm(g.end)}・<b>剩 ${a.left} 分</b></div>
+          <div class="sub">${g.next ? `下一班 <span class="mono">${esc(g.next.code || '')}</span> ${esc(g.next.trailer || '')}${g.next.to ? ' → ' + esc(g.next.to) : ''}` : g.tail ? '<span class="tag ok">收班待命</span>當天班次已跑完' : '日末'}${g.departFrom && g.departFrom !== st && yardMembers(st).length > 1 ? `（由${esc(g.departFrom)}出車）` : ''}${cands.length ? '｜可跑 ' + cands.map(c => `<span class="tag st" title="去 ${c.go}／回 ${c.back}／樣本 ${c.n}">${esc(c.station)} ${Math.round(c.round)}</span>`).join('') : '｜<span class="muted">剩餘時間跑不了來回</span>'}${flags.map(f => `<span class="tag ${f.includes('日初') || f.includes('休息') ? 'warn' : ''}">${esc(f)}</span>`).join('')}</div></div>`; }
       const nds = needsAt(B.day, st, t);
       if (nds.length) html += `<div class="needs">預測加班（此刻起 2 小時內）：${nds.slice(0, 5).map(m => `${esc(m.need.from)}→${esc(m.need.to)} ${esc(m.need.boxes)}櫃 <span class="muted">${esc(m.need.tier)} ${hhmm(m.need.t1)}–${hhmm(m.need.t2)}</span>`).join('、')}${nds.length > 5 ? ` 等 ${nds.length} 條` : ''}</div>`;
       html += '</div>';
@@ -885,7 +1123,7 @@ function renderStationChips() {
   const labels = state.days.map(d => d.label); if (!labels.includes(S.day)) S.day = labels[0];
   const el = $('#sDays'); el.innerHTML = ''; for (const l of labels) { const c = document.createElement('span'); c.className = 'chip' + (l === S.day ? ' on' : ''); c.textContent = l; c.onclick = () => { S.day = l; renderStationChips(); renderStation(); }; el.appendChild(c); }
 }
-function stationRows() { const bt = $('#sBetween').checked; return state.rows.filter(r => r.day === S.day && (!bt || r.between)); }
+function stationRows() { const bt = $('#sBetween').checked; return state.rows.filter(r => r.day === S.day && (!bt || r.between || r.tail)); }
 function renderStation() {
   const rows = stationRows(); const agg = new Map();
   for (const r of rows) { if (!agg.has(r.station)) agg.set(r.station, { n: 0, min: 0 }); const a = agg.get(r.station); a.n++; a.min += r.dur; }
@@ -902,7 +1140,7 @@ function renderStation() {
   if (nowAbs != null) html += live.length ? `<div style="margin-bottom:10px">${live.map(r => `<span class="tag ok">${esc(r.code)} ${esc(r.name)}：還有 ${r.op + r.dur - nowAbs} 分（${hhmm(r.end)} 離站${r.next?.to ? '往' + esc(r.next.to) : ''}）</span>`).join(' ')}</div>` : '<div class="muted small" style="margin-bottom:10px">此刻沒有車頭在站空等</div>';
   html += gantt(srows.map(r => ({ label: `<b>${esc(r.code)} ${esc(r.name)}</b><span class="muted">${esc(r.kind)}・${esc(r.unit)}</span>`, segs: [{ cls: 'gap' + (r.dur >= 120 ? ' big' : '') + (nowAbs != null && r.op <= nowAbs && nowAbs < r.op + r.dur ? ' now' : ''), s: r.op, e: r.op + r.dur, text: `${hhmm(r.start)}–${hhmm(r.end)} ${r.dur}分 ｜ ${r.prev ? esc(r.prev.code || '') + ' 到' : ''} → ${r.next ? esc(r.next.code || '') + ' 離' + (r.next.to ? '往' + esc(r.next.to) : '') : ''}`, title: r.cands.length ? '可跑：' + r.cands.map(c => `${c.station}(${Math.round(c.round)})`).join('、') : '' }], tractor: r.tractor, day: r.day })), nowAbs);
   const srowsRef = srows;
-  html += `<div class="tblwrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>車頭</th><th>開始</th><th>結束</th><th>分鐘</th><th>前班次（到站）</th><th>後班次（離站）</th><th>可跑站所（來回分鐘）</th><th>標記</th></tr></thead><tbody>${srows.map(r => `<tr><td class="mono"><b>${esc(r.code)}</b> ${esc(r.name)}<div class="small muted">${esc(r.kind)}・${esc(r.unit)}</div></td><td class="mono">${hhmm(r.start)}</td><td class="mono">${hhmm(r.end)}</td><td class="mono"><b>${r.dur}</b></td><td class="small">${legText(r.prev, 'prev')}</td><td class="small">${legText(r.next, 'next')}</td><td>${r.cands.map(c => `<span class="tag st">${esc(c.station)} ${Math.round(c.round)}</span>`).join('') || '—'}</td><td>${r.flags.map(f => `<span class="tag">${esc(f)}</span>`).join('')}</td></tr>`).join('')}</tbody></table></div>`;
+  html += `<div class="tblwrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>車頭</th><th>開始</th><th>結束</th><th>分鐘</th><th>前班次（到站）</th><th>後班次（離站）</th><th>可跑站所（來回分鐘）</th><th>標記</th></tr></thead><tbody>${srows.map(r => `<tr><td class="mono"><b>${esc(r.code)}</b> ${esc(r.name)}<div class="small muted">${esc(r.kind)}・${esc(r.unit)}</div></td><td class="mono">${hhmm(r.start)}</td><td class="mono">${hhmm(r.end)}</td><td class="mono"><b>${r.dur}</b></td><td class="small">${legText(r.prev, 'prev')}</td><td class="small">${legText(r.next, 'next', r.tail)}</td><td>${r.cands.map(c => `<span class="tag st">${esc(c.station)} ${Math.round(c.round)}</span>`).join('') || '—'}</td><td>${r.flags.map(f => `<span class="tag">${esc(f)}</span>`).join('')}</td></tr>`).join('')}</tbody></table></div>`;
   box.innerHTML = html; bindGantt(box);
   box.querySelectorAll('.g-row').forEach(el => el.onclick = () => { const r = srowsRef[+el.dataset.i]; openTractor(r.tractor, r.day); });
 }
@@ -926,7 +1164,7 @@ function tractorSegs(t) {
   // 以該車頭第一個時間點的營運時間為基準，整條時間軸平移到 12:00 起算的一天
   const base = t.first == null ? 0 : opT(t.first) - t.first;
   const ev = [...t.legs.map(l => ({ cls: 'leg' + (l.color === 'yellow' ? ' new' : ''), s: l.start + base, e: l.end + base, text: `${esc(l.from)}→${esc(l.to)} ${esc(l.code || '')}`, title: `${l.code || ''} ${l.trailer || ''}：${l.from} ${hhmm(l.start)} → ${l.to} ${hhmm(l.end)}（${l.dur} 分）${l.note ? '｜' + l.note : ''}` })),
-    ...t.gaps.filter(g => g.dur > 0).map(g => ({ cls: g.dur >= state.params.minGap ? 'gap' + (g.dur >= 120 ? ' big' : '') : 'dwell', s: g.start + base, e: g.end + base, text: g.dur >= state.params.minGap ? `${esc(g.station)} 空 ${g.dur}分` : '', title: `${g.station} ${hhmm(g.start)}–${hhmm(g.end)} 停留 ${g.dur} 分` }))];
+    ...t.gaps.filter(g => g.dur > 0).map(g => ({ cls: g.dur >= state.params.minGap ? 'gap' + (g.dur >= 120 ? ' big' : '') + (g.tail ? ' tail' : '') : 'dwell', s: g.start + base, e: g.end + base, text: g.dur >= state.params.minGap ? `${g.tail ? '收班 ' : ''}${esc(g.station)} 空 ${g.dur}分` : '', title: `${g.station} ${hhmm(g.start)}–${hhmm(g.end)} ${g.tail ? '收班待命' : '停留'} ${g.dur} 分` }))];
   return ev;
 }
 function renderTractors() {
@@ -946,11 +1184,11 @@ function renderTractors() {
 }
 function openTractor(t, day) {
   $('#mTitle').innerHTML = `${esc(day)}　${esc(t.kind)}・${esc(t.unit)}　<span class="mono">${esc(t.code)}</span> ${esc(t.name)} <span class="n muted small">${esc(t.remark || '')}</span>`;
-  const ev = [...t.legs.map(l => ({ k: '班次', ...l })), ...t.gaps.map(g => ({ k: g.dur >= state.params.minGap ? '空檔' : '停留', ...g }))].sort((a, b) => a.start - b.start);
+  const ev = [...t.legs.map(l => ({ k: '班次', ...l })), ...t.gaps.map(g => ({ k: g.tail ? '收班' : g.dur >= state.params.minGap ? '空檔' : '停留', ...g }))].sort((a, b) => a.start - b.start);
   $('#mBody').innerHTML = gantt([{ label: `<b>${esc(t.code)}</b>`, segs: tractorSegs(t) }]) +
     `<div class="tblwrap" style="margin-top:12px;max-height:50vh"><table class="tbl"><thead><tr><th>序</th><th>類型</th><th>班次代號</th><th>附掛車廂</th><th>起站</th><th>發車</th><th>迄站</th><th>到達</th><th>分鐘</th><th>狀態／可跑站所</th></tr></thead><tbody>${ev.map((e, i) => e.k === '班次'
       ? `<tr><td>${i + 1}</td><td>班次</td><td class="mono">${esc(e.code || '')}</td><td>${esc(e.trailer || '')}</td><td>${esc(e.from)}</td><td class="mono">${hhmm(e.start)}</td><td>${esc(e.to)}</td><td class="mono">${hhmm(e.end)}</td><td class="mono">${e.dur}</td><td>${e.color === 'yellow' ? '<span class="tag new">新增/調整</span>' : '原班次'}${e.note ? ` <span class="tag">${esc(e.note)}</span>` : ''}</td></tr>`
-      : `<tr style="${e.k === '空檔' ? 'background:var(--gap-soft)' : ''}"><td>${i + 1}</td><td><b>${e.k}</b></td><td></td><td></td><td>${esc(e.station)}</td><td class="mono">${hhmm(e.start)}</td><td>${esc(e.station)}</td><td class="mono">${hhmm(e.end)}</td><td class="mono"><b>${e.dur}</b></td><td>${e.k === '空檔' ? (candidates(e.station, e.dur).map(c => `<span class="tag st">${esc(c.station)} ${Math.round(c.round)}</span>`).join('') || '<span class="muted">無可跑站所</span>') : ''}</td></tr>`).join('')}</tbody></table></div>`;
+      : `<tr style="${e.k === '空檔' || e.k === '收班' ? 'background:var(--gap-soft)' : ''}"><td>${i + 1}</td><td><b>${e.k}</b></td><td></td><td></td><td>${esc(e.station)}</td><td class="mono">${hhmm(e.start)}</td><td>${esc(e.station)}</td><td class="mono">${hhmm(e.end)}</td><td class="mono"><b>${e.dur}</b></td><td>${e.k === '空檔' || e.k === '收班' ? (candidates(e.station, e.dur).map(c => `<span class="tag st">${esc(c.station)} ${Math.round(c.round)}</span>`).join('') || '<span class="muted">無可跑站所</span>') : ''}</td></tr>`).join('')}</tbody></table></div>`;
   $('#modal').classList.add('open');
 }
 
@@ -980,7 +1218,7 @@ async function exportExcel() {
     const lines = [['班次空檔分析（可排加班的空檔與鄰近站所）'], [], ['產生時間', new Date().toLocaleString('zh-TW')], ['來源檔案', state.days.map(d => d.file).join('；')],
       ['空檔門檻', `${P.minGap} 分鐘以上（同一站停留，兩班之間）`], ['作業緩衝', `${P.buffer} 分鐘（掛／卸車廂等作業，加在來回車程之外）`],
       ['站間車程', `由上傳班表（白＋黃）實際班次反推，取中位數，下限 ${P.minLeg} 分；表「站間車程」有樣本數可參考`], ['可跑站所', '去程＋回程＋作業緩衝 ≤ 空檔分鐘，依來回時間由近到遠排列；括號內為來回合計分鐘'],
-      ['底色規則', '白＝原班次、黃＝新增／調整班次、綠＝刪減（已排除不計）'], ['同場域', `${$('#pYards').value}（視為同一地點，車程 0 分；空檔站所顯示為「彰化／秀水」這類合併名稱）`], ['非站所', '工停＝外部停車場（台中市西屯區環中路三段 800 號）'],
+      ['底色規則', '白＝原班次、黃＝新增／調整班次、綠＝刪減（已排除不計）'], ['同場域', `${$('#pYards').value}（視為同一地點，車程 0 分；空檔站所顯示為「彰化／秀水」這類合併名稱）`], ['非站所', '工停＝外部停車場（台中市西屯區環中路三段 800 號）'], ['收班待命', `最後一班到站後 ${P.tail} 分內仍視為在站可跑加班（標記「收班待命」，參數可調）`],
       ['時段可用_日期', '站所 × 30 分時段的可用車頭數（該時刻在站且剩餘空檔 ≥60 分），同網站派車看板'],
       ['注意', '「日初待命」＝空檔前沒有班次代號（報到後等出車／放空櫃），請自行判斷；全拖車部分班次備註「含休息時間」'],
       [], ['工作表', '內容'], ['空檔_日期', '每台車頭的空檔清單（可篩選單位／站所／分鐘）'], ['站所別_日期', '依站所、時間排序，看某站某時段有哪些車頭在站'], ['時間軸_日期', '每台車頭完整行程（班次段＋空檔）'], ['站間車程', '反推的站間車程（樣本數／中位／最短／最長）']];
@@ -1002,10 +1240,10 @@ async function exportExcel() {
       ws = wb.addWorksheet(`時間軸_${lab}`.slice(0, 31));
       ws.addRow(['車種', '單位', '車頭代號', '車頭名稱', '序', '類型', '班次代號', '附掛車廂', '起站', '發車', '迄站', '到達', '分鐘', '狀態', '班次備註']);
       for (const t of d.tractors.filter(t => t.active).sort((a, b) => kindRank(a.kind) - kindRank(b.kind) || unitRank(a.unit) - unitRank(b.unit) || a.row - b.row)) {
-        const ev = [...t.legs.map(l => ({ k: '班次', ...l })), ...t.gaps.map(g => ({ k: g.dur >= P.minGap ? '空檔' : '停留', ...g }))].sort((a, b) => a.start - b.start);
+        const ev = [...t.legs.map(l => ({ k: '班次', ...l })), ...t.gaps.map(g => ({ k: g.tail ? '收班待命' : g.dur >= P.minGap ? '空檔' : '停留', ...g }))].sort((a, b) => a.start - b.start);
         ev.forEach((e, i) => { const row = e.k === '班次' ? ws.addRow([t.kind, t.unit, t.code, t.name, i + 1, '班次', e.code, e.trailer, e.from, hhmm(e.start), e.to, hhmm(e.end), e.dur, e.color === 'yellow' ? '新增/調整' : '原班次', e.note])
           : ws.addRow([t.kind, t.unit, t.code, t.name, i + 1, e.k, null, null, e.station, hhmm(e.start), e.station, hhmm(e.end), e.dur, null, null]);
-          if (e.k === '空檔') { row.getCell(6).fill = FILL.grn; row.getCell(13).fill = FILL.grn; } else if (e.k === '班次' && e.color === 'yellow') row.getCell(14).fill = FILL.yel; });
+          if (e.k === '空檔' || e.k === '收班待命') { row.getCell(6).fill = FILL.grn; row.getCell(13).fill = FILL.grn; } else if (e.k === '班次' && e.color === 'yellow') row.getCell(14).fill = FILL.yel; });
       }
       styleTable(ws, [8, 7, 9, 11, 5, 6, 10, 16, 8, 7, 8, 7, 7, 10, 14]);
     }
@@ -1055,10 +1293,10 @@ drop.onclick = () => fi.click(); fi.onchange = () => { addFiles([...fi.files]); 
 drop.addEventListener('drop', e => addFiles([...e.dataTransfer.files].filter(f => /\.(docx|xlsx)$/i.test(f.name))));
 $('#recalc').onclick = recompute;
 const nd = $('#needsDrop'), ni = $('#needsInput');
-nd.onclick = () => ni.click(); ni.onchange = () => { if (ni.files[0]) setNeedsFile(ni.files[0]); ni.value = ''; };
+nd.onclick = () => ni.click(); ni.onchange = () => { if (ni.files[0]) addNeedsFile(ni.files[0]); ni.value = ''; };
 ['dragenter', 'dragover'].forEach(ev => nd.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); nd.classList.add('over'); }));
 ['dragleave', 'drop'].forEach(ev => nd.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); nd.classList.remove('over'); }));
-nd.addEventListener('drop', e => { const f = [...e.dataTransfer.files].find(f => /\.(csv|xlsx)$/i.test(f.name)); if (f) setNeedsFile(f); });
+nd.addEventListener('drop', e => { const f = [...e.dataTransfer.files].find(f => /\.(csv|xlsx)$/i.test(f.name)); if (f) addNeedsFile(f); });
 ['#nQ', '#nHasCand', '#nBetween'].forEach(s => $(s).addEventListener('input', renderNeedsTable));
 $('#bTime').addEventListener('change', () => { renderBoardNow(); renderBoardHeat(); });
 $('#bTime').addEventListener('keydown', e => { if (e.key === 'Enter') { renderBoardNow(); renderBoardHeat(); } });
@@ -1067,7 +1305,7 @@ $('#bNow').onclick = () => { const n = new Date(); $('#bTime').value = String(n.
 $('#bM30').onclick = () => { $('#bTime').value = hhmm(boardTime() - 30); renderBoardNow(); renderBoardHeat(); };
 $('#bP30').onclick = () => { $('#bTime').value = hhmm(boardTime() + 30); renderBoardNow(); renderBoardHeat(); };
 (function initYards() { let v = null; try { v = localStorage.getItem('sg_yards'); } catch (e) {} $('#pYards').value = v || YARDS_DEFAULT; setYards($('#pYards').value); })();
-['#pMin', '#pBuf', '#pLeg'].forEach(s => $(s).addEventListener('change', recompute));
+['#pMin', '#pBuf', '#pLeg', '#pTail'].forEach(s => $(s).addEventListener('change', recompute));
 ['#fStation', '#fMinDur', '#fQ', '#fBetween', '#fHasCand'].forEach(s => $(s).addEventListener('input', renderGaps));
 ['#sNow', '#sBetween'].forEach(s => $(s).addEventListener('input', renderStation));
 ['#tQ', '#tOnlyGap'].forEach(s => $(s).addEventListener('input', renderTractors));
@@ -1076,14 +1314,24 @@ $('#tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { $('#tabs').
 $('#dlBtn').onclick = exportExcel;
 $('#mClose').onclick = () => $('#modal').classList.remove('open'); $('#modal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
 $('#helpBtn').onclick = () => $('#helpModal').classList.add('open'); $('#helpClose').onclick = () => $('#helpModal').classList.remove('open'); $('#helpModal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open')); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal.open').forEach(m => { if (m.id === 'adminModal') $('#aCancel').click(); else m.classList.remove('open'); }); });
 (function theme() { const root = document.documentElement; const saved = (() => { try { return localStorage.getItem('sg_theme'); } catch (e) { return null; } })(); if (saved) root.dataset.theme = saved;
   const sync = () => $('#themeBtn').textContent = (root.dataset.theme === 'dark' || (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches)) ? '☀️' : '🌙'; sync();
   $('#themeBtn').onclick = () => { const dark = root.dataset.theme === 'dark' || (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); root.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('sg_theme', root.dataset.theme); } catch (e) {} sync(); }; })();
 // 開發用：?load=data/1105.docx,data/1106.docx&needs=data/needs.csv
 (async () => { const sp = new URLSearchParams(location.search); const q = sp.get('load'); if (!q) return; const files = []; for (const u of q.split(',')) { const r = await fetch(u); if (!r.ok) continue; files.push(new File([await r.arrayBuffer()], u.split('/').pop())); }
-  const nq = sp.get('needs'); if (nq) { const r = await fetch(nq); if (r.ok) { state.needs = await readNeedsFile(new File([await r.arrayBuffer()], nq.split('/').pop())); state.needsFile = nq.split('/').pop(); renderNeedsFiles(); } }
-  if (files.length) addFiles(files); })();
+  const nq = sp.get('needs'); if (nq) { const r = await fetch(nq); if (r.ok) await addNeedsFile(new File([await r.arrayBuffer()], nq.split('/').pop()), { save: false }); }
+  if (files.length) addFiles(files, { save: false }); })();
+/* ---- 網站共用資料：通行碼閘門 ---- */
+$('#gGo').onclick = async () => { const code = $('#gCode').value.trim(); if (!code) return; $('#gGo').disabled = true; $('#gErr').textContent = '';
+  try { await tryLogin(code, true); hideGate(); renderCloud(); await cloudLoad(); }
+  catch (e) { $('#gErr').textContent = e.status === 401 ? '通行碼錯誤' : `連線失敗：${e.message}`; }
+  $('#gGo').disabled = false; };
+$('#gCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('#gGo').click(); });
+$('#gSkip').onclick = e => { e.preventDefault(); hideGate(); renderCloud(); };
+$('#adminModal').addEventListener('click', e => { if (e.target === e.currentTarget) $('#aCancel').click(); });
+$('#aCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('#aOk').click(); });
+initCloud();
 window.__sg = state;
 </script>
 </body>

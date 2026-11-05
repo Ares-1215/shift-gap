@@ -16,6 +16,8 @@ from parse_shift import parse_sheet, norm
 
 MIN_LEG = 5      # 站間車程下限（分）
 MAX_LEG = 600    # 超過 10 小時的「車程」視為異常不採計
+TAIL_DEFAULT = 180   # 收班後可用：最後一班到站後 N 分內仍視為在站待命可跑加班（0＝不計；--tail 可改）
+TAIL = TAIL_DEFAULT
 
 # 同場域：同一地點、車程 0 分（使用者 2026-11-05 確認：彰化=秀水、中工=西屯；伸港／彰濱只是外面的收放貨點）
 YARDS_DEFAULT = "彰化=秀水；中工=西屯"
@@ -185,6 +187,13 @@ def build_timeline(t):
             legs.append({"from": a["station"], "to": b["station"], "start": a["abs"], "end": b["abs"], "dur": dur,
                          "code": a["shift_code"], "trailer": a["trailer"], "note": a["note"],
                          "color": "yellow" if "yellow" in (a["color"], b["color"], a["shift_color"]) else "white"})
+    # 收班待命：最後一班到站後 TAIL 分內仍視為在站可跑加班（使用者 2026-11-05：跑完當天班次、後面沒班也可以跑加班）
+    last_i = next((i for i in range(len(seq) - 1, -1, -1) if seq[i]["abs"] is not None and seq[i]["station"]), None)
+    if TAIL > 0 and last_i is not None:
+        a = seq[last_i]
+        gaps.append({"station": yard(a["station"]), "arrive_at": a["station"], "depart_from": a["station"],
+                     "start": a["abs"], "end": a["abs"] + TAIL, "dur": TAIL,
+                     "prev": a, "next": None, "prev_leg": prev_leg(seq, last_i), "next_leg": None, "tail": True})
     t["seq"] = seq
     t["legs"] = legs
     t["gaps"] = gaps
@@ -282,16 +291,18 @@ def analyze(days, min_gap, buffer):
                     continue
                 cands = candidates(mat, g["station"], g["dur"], buffer)
                 flags = []
-                if g["prev_leg"] is None:
+                if g["prev_leg"] is None and not g.get("tail"):
                     flags.append("日初待命(前無班次)")
-                if g["next_leg"] is None:
+                if g.get("tail"):
+                    flags.append("收班待命(最後一班後)")
+                elif g["next_leg"] is None:
                     flags.append("日末(後無班次)")
                 if t["double"]:
                     flags.append("雙駕駛")
                 for x in (g["prev_leg"], g["next_leg"]):
                     if x and x.get("note"):
                         flags.append(f"備註:{x['note']}")
-                if "yellow" in (g["prev"]["color"], g["next"]["color"]):
+                if "yellow" in (g["prev"]["color"], g["next"]["color"] if g["next"] else None):
                     flags.append("前後班次有調整")
                 if g["arrive_at"] != g["depart_from"]:
                     flags.append(f"到{g['arrive_at']}、由{g['depart_from']}出車")
@@ -300,7 +311,8 @@ def analyze(days, min_gap, buffer):
                     flags.append(f"{pl[0]}：{pl[1]}")
                 rows.append({"day": d["label"], "kind": t["kind"], "unit": t["unit"], "code": t["code"], "name": t["name"],
                              "remark": t["remark"], "station": g["station"], "start": g["start"], "end": g["end"],
-                             "dur": g["dur"], "prev": g["prev_leg"], "next": g["next_leg"], "cands": cands, "flags": flags})
+                             "dur": g["dur"], "prev": g["prev_leg"], "next": g["next_leg"], "cands": cands, "flags": flags,
+                             "tail": bool(g.get("tail"))})
     return mat, rows
 
 
@@ -421,8 +433,10 @@ def write_needs_sheets(wb, matched, days, buffer):
                 flags = []
                 if t["double"]:
                     flags.append("雙駕駛")
-                if g["prev_leg"] is None:
+                if g["prev_leg"] is None and not g.get("tail"):
                     flags.append("日初待命")
+                if g.get("tail"):
+                    flags.append("收班待命")
                 for x in (g["prev_leg"], g["next_leg"]):
                     if x and x.get("note"):
                         flags.append(f"備註:{x['note']}")
@@ -618,7 +632,10 @@ def main():
     ap.add_argument("--json", help="另存分析結果 JSON")
     ap.add_argument("--needs", help="加班需求清單 CSV/xlsx（ot_forecast.py 產出或自行編）")
     ap.add_argument("--yards", default=YARDS_DEFAULT, help="同場域，例：彰化=秀水；中工=西屯")
+    ap.add_argument("--tail", type=int, default=TAIL_DEFAULT, help="收班後可用分鐘：最後一班到站後仍視為在站待命（0＝不計）")
     a = ap.parse_args()
+    global TAIL
+    TAIL = max(0, a.tail)
     set_yards(a.yards)
     days = [load_day(f) for f in a.files]
     mat, rows = analyze(days, a.min, a.buffer)
