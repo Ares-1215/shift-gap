@@ -30,3 +30,6 @@
 [2026-11-04 22:38]   站間車程配對 1019 → C:\Users\26516\Desktop\運務\班次空檔分析_1105-1106.xlsx
 [2026-11-04 22:38] 配車 Excel → C:\Users\26516\Desktop\運務\班次空檔分析_1105-1106.xlsx
 [2026-11-04 22:38] === 完成 ===
+[2026-11-05 13:40] 錯誤: 'python.exe' 程式無法執行: Access is denied位於 C:\Users\26516\notebookLM\shift-gap\tools\daily_forecast.ps1:8 字元:3
++   & "C:\Users\26516\AppData\Local\Programs\Python\Python312\python.ex ...
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~。

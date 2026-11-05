@@ -58,6 +58,40 @@ header.top .wrap{display:flex;align-items:center;gap:14px;padding:10px 16px;flex
 .drop.small{padding:14px;margin-top:14px}
 .drop.small strong{font-size:14px}
 .drop code{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:0 4px;font-size:12px}
+/* 派車看板 */
+.now-sum{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;margin:4px 0 12px}
+.now-sum .big{font-size:28px;font-weight:700;letter-spacing:-.5px}
+.now-sum .big small{font-size:13px;font-weight:400;color:var(--muted);margin-left:4px}
+.region{margin-top:14px}
+.region h3{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:8px}
+.region h3 .rc{width:10px;height:10px;border-radius:3px;display:inline-block}
+.stcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px}
+.stcard{border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden}
+.stcard .hd{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+.stcard .hd b{font-size:15px}
+.stcard .hd .cnt{margin-left:auto;background:var(--gap);color:#fff;border-radius:999px;padding:1px 10px;font-weight:700;font-size:13px}
+.stcard .hd .cnt.zero{background:var(--border);color:var(--muted)}
+.stcard .row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12.5px;cursor:pointer}
+.stcard .row:last-child{border-bottom:none}
+.stcard .row:hover{background:var(--accent-soft)}
+.stcard .row.soon{opacity:.6}
+.stcard .row .who b{font-size:13.5px;margin-right:4px}
+.stcard .row .left{text-align:right;white-space:nowrap}
+.stcard .row .left b{font-size:14px;color:var(--gap)}
+.stcard .row.soon .left b{color:var(--warn)}
+.stcard .row .sub{grid-column:1/-1;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.stcard .needs{padding:6px 12px;background:var(--leg-new-soft);font-size:12px;border-top:1px solid var(--border)}
+.heatwrap{overflow:auto;border:1px solid var(--border);border-radius:10px;max-height:70vh}
+table.heat{border-collapse:separate;border-spacing:0;font-size:11.5px}
+table.heat th,table.heat td{border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:0;text-align:center;min-width:30px;height:26px}
+table.heat thead th{position:sticky;top:0;background:var(--surface-2);z-index:3;font-weight:500;color:var(--muted);font-size:10.5px}
+table.heat thead th.hr{font-weight:700;color:var(--text)}
+table.heat th.st{position:sticky;left:0;background:var(--surface);z-index:2;text-align:left;padding:0 10px;white-space:nowrap;min-width:120px;font-weight:600}
+table.heat thead th.st{z-index:4;background:var(--surface-2)}
+table.heat tr.rg th{background:var(--surface-2);text-align:left;padding:3px 10px;color:var(--muted);font-weight:600;position:sticky;left:0}
+table.heat td.c{cursor:pointer;font-variant-numeric:tabular-nums}
+table.heat td.c:hover{outline:2px solid var(--accent);outline-offset:-2px}
+table.heat td.cur,table.heat th.cur{box-shadow:inset 0 0 0 2px var(--warn)}
 .cand{display:flex;flex-wrap:wrap;gap:4px}
 .cand .tag{cursor:pointer}
 .cand .tag:hover{outline:2px solid var(--accent)}
@@ -84,6 +118,7 @@ details.nd td{padding:2px 8px 2px 0;border:none;vertical-align:top}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .kpi{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
 .kpi .v{font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1.1;word-break:keep-all}
+.kpi .v.txt{font-size:14px;line-height:1.35;letter-spacing:0;padding-top:4px}
 .kpi .l{color:var(--muted);font-size:12px;margin-top:4px}
 .kpi .s{color:var(--muted);font-size:11px;margin-top:4px}
 .tabs{display:flex;gap:4px;margin-top:18px;border-bottom:1px solid var(--border);overflow-x:auto}
@@ -186,6 +221,7 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
       <label class="field">空檔門檻（分鐘）<input type="number" id="pMin" value="60" min="10" step="10"></label>
       <label class="field">掛卸作業緩衝（分鐘，來回合計）<input type="number" id="pBuf" value="30" min="0" step="5"></label>
       <label class="field">站間車程下限（分鐘）<input type="number" id="pLeg" value="5" min="0" step="5"></label>
+      <label class="field">同場域（同一地點，車程 0 分）<input type="text" id="pYards" value="彰化=秀水；中工=西屯" style="min-width:220px" title="用「=」連同一地點的站，不同組用「；」分開"></label>
       <button class="btn" id="recalc">重新計算</button>
     </div>
   </section>
@@ -194,7 +230,8 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
 
   <div id="main" style="display:none">
     <div class="tabs" id="tabs">
-      <button class="tab active" data-t="gaps">空檔清單</button>
+      <button class="tab active" data-t="board">派車看板</button>
+      <button class="tab" data-t="gaps">空檔清單</button>
       <button class="tab" data-t="station">站所視角</button>
       <button class="tab" data-t="tractor">車頭時間軸</button>
       <button class="tab" data-t="matrix">站間車程</button>
@@ -214,7 +251,20 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
       <div class="tblwrap"><table class="tbl" id="nTbl"><thead><tr><th>日期</th><th>起站 → 迄站</th><th>等級</th><th>機率</th><th>預估櫃數</th><th>發車時間窗</th><th>常見班次</th><th>去/回車程</th><th>候選車頭（點開看空檔與可出發區間）</th></tr></thead><tbody></tbody></table></div>
     </section>
 
-    <section class="panel active card" id="p-gaps">
+    <section class="panel active card" id="p-board">
+      <div class="filters">
+        <div class="field">日期<div class="chips" id="bDays"></div></div>
+        <label class="field">時刻（HHMM）<span style="display:flex;gap:4px"><input type="text" id="bTime" value="2200" maxlength="4" style="width:80px;font-weight:700;font-size:16px"><button class="btn" id="bNow" title="用現在的時間">現在</button><button class="btn" id="bM30">−30</button><button class="btn" id="bP30">+30</button></span></label>
+        <div class="field">分區<div class="chips" id="bRegions"></div></div>
+        <div class="field">車種<div class="chips" id="bKinds"></div></div>
+        <label class="field">可用門檻（剩餘分鐘）<input type="number" id="bMinLeft" value="60" step="10" style="width:90px"></label>
+      </div>
+      <div id="boardNow"></div>
+      <h2 style="margin-top:22px">站所 × 時段　可用車頭數 <span class="n">30 分一格，14:00 → 翌日 08:00；數字＝該時刻在站、剩餘空檔 ≥ 門檻的車頭數；點格子切換上方時刻</span></h2>
+      <div class="heatwrap" id="boardHeat"></div>
+    </section>
+
+    <section class="panel card" id="p-gaps">
       <div class="filters">
         <div class="field">日期<div class="chips" id="fDays"></div></div>
         <div class="field">車種<div class="chips" id="fKinds"></div></div>
@@ -271,6 +321,8 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
 <div class="modal" id="helpModal"><div class="box" style="max-width:760px">
   <div style="display:flex;align-items:center;gap:10px"><h3 style="flex:1">分析規則</h3><button class="btn ghost" id="helpClose">✕</button></div>
   <ul class="help">
+    <li><b>派車看板</b>：輸入時刻（或按「現在」）→ 依分區列出每站此刻在站空等的車頭、空到幾點、剩幾分、下一班去哪、剩餘時間跑得了哪些站來回；剩餘不到門檻（預設 60 分）的標「即將出車」不計入可用數。下方熱圖＝站所 × 30 分時段的可用車頭數。</li>
+    <li><b>同場域</b>：彰化＝秀水、中工＝西屯 視為同一地點（車程 0 分），空檔與站所以「彰化／秀水」合併顯示；可在上方參數改。<b>工停</b>＝外部停車場（西屯環中路三段 800 號），不是站所，會標「停車場」。</li>
     <li><b>讀取範圍</b>：只讀「曳引車」「全拖車」兩分頁；每台車頭一組 5 列（班次代號／附掛車廂／到離時間／到離站所／備註），續接列（同車頭名稱、無代號）接在同一台後面。</li>
     <li><b>底色</b>：白＝原班次、黃＝新增或調整的班次、綠＝刪減班次（排除不計）。分析的是「調整後」班表。</li>
     <li><b>空檔</b>：同一台車頭相鄰兩個時間點在同一站，停留分鐘 ≥ 門檻。跨午夜依序列自動加一天。</li>
@@ -293,6 +345,29 @@ const colLetter = n => { let s = ''; while (n > 0) { const r = (n - 1) % 26; s =
 const UNIT_SEQ = ['北區', '新竹', '中區', '南區', '羅東', '棧板部'];
 const unitRank = u => { const i = UNIT_SEQ.indexOf(u); return i < 0 ? 99 : i; };
 const kindRank = k => k === '曳引車' ? 0 : k === '全拖車' ? 1 : 2;
+/* 同場域：同一地點、車程 0 分（使用者 2026-11-05 確認：彰化=秀水、中工=西屯；伸港／彰濱只是外面的收放貨點，不算） */
+const YARDS_DEFAULT = '彰化=秀水；中工=西屯';
+let YARD = new Map();
+function setYards(text) { YARD = new Map(); for (const grp of String(text || '').split(/[;；\n]/)) { const ms = grp.split(/[=＝,，、]/).map(s => s.trim()).filter(Boolean); if (ms.length < 2) continue; const label = ms.join('／'); for (const s of ms) YARD.set(s, label); } }
+const yardOf = s => YARD.get(s) || s;
+const yardMembers = y => y.includes('／') ? y.split('／') : [y];
+/* 非站所地點 */
+const PLACE_NOTES = { '工停': { tag: '停車場', note: '外部停車場（台中市西屯區環中路三段 800 號），租來停放車頭與櫃子，不是站所' } };
+const placeOf = y => { for (const m of yardMembers(y)) if (PLACE_NOTES[m]) return PLACE_NOTES[m]; return null; };
+/* 分區（來源：運行看板 regions.js；標「推斷」的是對照表沒有、依地理位置推的） */
+const REGION_ORDER = ['北一區', '北二區', '桃竹區', '中區', '彰嘉區', '南區', '未分區'];
+const REGION = { '台北': '北一區', '蘆洲': '北一區', '八里': '北一區', '北投': '北一區', '新莊': '北一區', '三重': '北一區', '四季': '北一區', '濱江': '北一區', '五股': '北一區', '淡水': '北一區', '跨境': '北一區',
+  '基隆': '北二區', '汐止': '北二區', '中和': '北二區', '土城': '北二區', '樹林': '北二區', '永和': '北二區', '新店': '北二區', '信義': '北二區', '羅東': '北二區', '花蓮': '北二區', '宜蘭': '北二區', '八堵': '北二區', '福德': '北二區', '古亭': '北二區', '國陽': '北二區', '玉里': '北二區', '光復': '北二區', '澎空': '北二區',
+  '竹科': '桃竹區', '新豐': '桃竹區', '竹北': '桃竹區', '桃園': '桃竹區', '龜山': '桃竹區', '八德': '桃竹區', '鶯歌': '桃竹區', '南崁': '桃竹區', '中壢': '桃竹區', '平鎮': '桃竹區', '楊梅': '桃竹區', '大園': '桃竹區', '新竹': '桃竹區', '竹東': '桃竹區', '六家': '桃竹區', '頭份': '桃竹區', '苗栗': '桃竹區', '酷澎': '桃竹區',
+  '台中': '中區', '中工': '中區', '西屯': '中區', '烏日': '中區', '大里': '中區', '豐原': '中區', '沙鹿': '中區', '大甲': '中區', '草屯': '中區', '南投': '中區', '梧棲': '中區', '太平': '中區', '埔里': '中區',
+  '彰化': '彰嘉區', '秀水': '彰嘉區', '員林': '彰嘉區', '和美': '彰嘉區', '嘉義': '彰嘉區', '民雄': '彰嘉區', '斗六': '彰嘉區', '虎尾': '彰嘉區', '北港': '彰嘉區', '田中': '彰嘉區', '東石': '彰嘉區', '朴子': '彰嘉區', '西螺': '彰嘉區', '二林': '彰嘉區',
+  '永康': '南區', '台南': '南區', '安平': '南區', '安南': '南區', '麻豆': '南區', '新營': '南區', '鳳山': '南區', '高雄': '南區', '前鎮': '南區', '三民': '南區', '大社': '南區', '岡山': '南區', '屏東': '南區', '屏工': '南區', '潮州': '南區', '新園': '南區', '台東': '南區', '楠梓': '南區', '小港': '南區', '仁武': '南區',
+  // 推斷（班次表有、對照表沒有）
+  '內湖': '北一區', '林口': '北一區', '泰山': '北一區', '北棧': '北一區', '統倉': '北一區', '觀音': '桃竹區', '森楊': '桃竹區', '長興': '桃竹區', '普惠': '桃竹區', '億鑫': '桃竹區',
+  '工停': '中區', '旱溪': '中區', '潭子': '中區', '科工': '中區', '竹山': '中區', '興毅': '中區', '芬園': '彰嘉區', '伸港': '彰嘉區', '彰濱': '彰嘉區', '大林': '彰嘉區', '斗工': '彰嘉區', '古坑': '彰嘉區', '雲科': '彰嘉區', '舊員': '彰嘉區', '福士': '彰嘉區', '達雅': '彰嘉區',
+  '玉井': '南區', '安接': '南區', '官田': '南區', '南化': '南區', '路竹': '南區', '總頭': '南區', '舊鳳': '南區', '關廟': '南區' };
+const regionOf = y => { for (const m of yardMembers(y)) if (REGION[m]) return REGION[m]; return '未分區'; };
+const regionRank = r => { const i = REGION_ORDER.indexOf(r); return i < 0 ? 99 : i; };
 const median = a => { const s = [...a].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
 const norm = v => { if (v == null) return null; if (typeof v === 'string') { v = v.trim(); return v === '' ? null : v; } return v; };
 function parseTime(v) {
@@ -479,7 +554,7 @@ function buildTimeline(t) {
   for (let i = 0; i + 1 < seq.length; i++) {
     const a = seq[i], b = seq[i + 1]; if (a.abs == null || b.abs == null) continue;
     const dur = b.abs - a.abs;
-    if (a.station === b.station) gaps.push({ station: a.station, start: a.abs, end: b.abs, dur, prevPt: a, nextPt: b, prev: prevLeg(seq, i), next: nextLeg(seq, i + 1) });
+    if (yardOf(a.station) === yardOf(b.station)) gaps.push({ station: yardOf(a.station), arriveAt: a.station, departFrom: b.station, start: a.abs, end: b.abs, dur, prevPt: a, nextPt: b, prev: prevLeg(seq, i), next: nextLeg(seq, i + 1) });
     else legs.push({ from: a.station, to: b.station, start: a.abs, end: b.abs, dur, code: a.shiftCode, trailer: a.trailer, note: a.note,
       color: (a.color === 'yellow' || b.color === 'yellow' || a.shiftColor === 'yellow') ? 'yellow' : 'white' });
   }
@@ -487,19 +562,20 @@ function buildTimeline(t) {
   t.double = !!(t.remark && String(t.remark).includes('雙駕駛'));
   t.first = seq.find(p => p.abs != null)?.abs ?? null; t.last = [...seq].reverse().find(p => p.abs != null)?.abs ?? null;
 }
-function prevLeg(seq, i) { const a = seq[i]; if (a.shiftCode == null && a.trailer == null) return null; let from = null; for (let j = i; j > 0; j--) if (seq[j - 1].station !== seq[j].station) { from = seq[j - 1].station; break; } return { from, code: a.shiftCode, trailer: a.trailer, note: a.note }; }
-function nextLeg(seq, i) { const b = seq[i]; if (b.shiftCode == null && b.trailer == null) return null; let to = null; for (let j = i; j < seq.length - 1; j++) if (seq[j + 1].station !== seq[j].station) { to = seq[j + 1].station; break; } return { to, code: b.shiftCode, trailer: b.trailer, note: b.note }; }
+function prevLeg(seq, i) { const a = seq[i]; if (a.shiftCode == null && a.trailer == null) return null; let from = null; for (let j = i; j > 0; j--) if (yardOf(seq[j - 1].station) !== yardOf(seq[j].station)) { from = seq[j - 1].station; break; } return { from, code: a.shiftCode, trailer: a.trailer, note: a.note }; }
+function nextLeg(seq, i) { const b = seq[i]; if (b.shiftCode == null && b.trailer == null) return null; let to = null; for (let j = i; j < seq.length - 1; j++) if (yardOf(seq[j + 1].station) !== yardOf(seq[j].station)) { to = seq[j + 1].station; break; } return { to, code: b.shiftCode, trailer: b.trailer, note: b.note }; }
 
 /* ===================== 分析 ===================== */
 const state = { days: [], params: { minGap: 60, buffer: 30, minLeg: 5, maxLeg: 600, sameRT: 60 }, matrix: new Map(), rows: [], sort: { key: 'default', dir: 1 }, tab: 'gaps', station: null, needs: [], needsFile: null, matched: [] };
 function travelMatrix() {
+  // 以「場域」為單位（彰化／秀水視為同一點），同場域之間不計
   const samples = new Map();
-  for (const d of state.days) for (const t of d.tractors) { if (!t.active) continue; for (const l of t.legs) if (l.dur >= 0 && l.dur <= state.params.maxLeg) { const k = l.from + '|' + l.to; if (!samples.has(k)) samples.set(k, []); samples.get(k).push(l.dur); } }
+  for (const d of state.days) for (const t of d.tractors) { if (!t.active) continue; for (const l of t.legs) { const a = yardOf(l.from), b = yardOf(l.to); if (a === b) continue; if (l.dur >= 0 && l.dur <= state.params.maxLeg) { const k = a + '|' + b; if (!samples.has(k)) samples.set(k, []); samples.get(k).push(l.dur); } } }
   const mat = new Map();
   for (const [k, v] of samples) mat.set(k, { n: v.length, med: Math.max(state.params.minLeg, median(v)), min: Math.min(...v), max: Math.max(...v) });
   return mat;
 }
-function travel(a, b) { const m = state.matrix; if (m.has(a + '|' + b)) { const x = m.get(a + '|' + b); return [x.med, x.n]; } if (m.has(b + '|' + a)) { const x = m.get(b + '|' + a); return [x.med, x.n]; } return [null, 0]; }
+function travel(a, b) { a = yardOf(a); b = yardOf(b); if (a === b) return [0, 99]; const m = state.matrix; if (m.has(a + '|' + b)) { const x = m.get(a + '|' + b); return [x.med, x.n]; } if (m.has(b + '|' + a)) { const x = m.get(b + '|' + a); return [x.med, x.n]; } return [null, 0]; }
 function candidates(station, gap) {
   const others = new Set();
   for (const k of state.matrix.keys()) { const [a, b] = k.split('|'); if (a === station) others.add(b); if (b === station) others.add(a); }
@@ -511,6 +587,8 @@ function candidates(station, gap) {
 }
 function recompute() {
   state.params.minGap = +$('#pMin').value || 60; state.params.buffer = +$('#pBuf').value || 0; state.params.minLeg = +$('#pLeg').value || 0;
+  setYards($('#pYards').value); try { localStorage.setItem('sg_yards', $('#pYards').value); } catch (e) {}
+  for (const d of state.days) for (const t of d.tractors) buildTimeline(t);   // 空檔依同場域重算
   state.matrix = travelMatrix();
   const rows = [];
   for (const d of state.days) for (const t of d.tractors) { if (!t.active) continue;
@@ -520,6 +598,8 @@ function recompute() {
       if (t.double) flags.push('雙駕駛');
       for (const x of [g.prev, g.next]) if (x && x.note) flags.push('備註:' + x.note);
       if (g.prevPt.color === 'yellow' || g.nextPt.color === 'yellow') flags.push('前後班次有調整');
+      if (g.arriveAt !== g.departFrom) flags.push(`到${g.arriveAt}、由${g.departFrom}出車`);
+      const pl = placeOf(g.station); if (pl) flags.push(pl.tag + '：' + pl.note);
       rows.push({ day: d.label, kind: t.kind, unit: t.unit, code: t.code, name: t.name, remark: t.remark, station: g.station, start: g.start, end: g.end, dur: g.dur, op: opT(g.start),
         prev: g.prev, next: g.next, cands: candidates(g.station, g.dur), flags, between: !!(g.prev && g.next), tractor: t });
     } }
@@ -564,7 +644,7 @@ function matchNeeds() {
   const out = []; const P = state.params; if (!state.needs.length) return out;
   for (const d of state.days) {
     for (const nd of state.needs.filter(x => !x.day || x.day === d.label.slice(-4))) {
-      const S = nd.from, T = nd.to; let tST, tTS, known;
+      const S = yardOf(nd.from), T = yardOf(nd.to); let tST, tTS, known;
       if (S === T) { tST = tTS = P.sameRT / 2; known = false; }
       else { tST = travel(S, T)[0]; tTS = travel(T, S)[0]; known = tST != null && tTS != null; if (tST == null) tST = tTS; if (tTS == null) tTS = tST; }
       const cands = [];
@@ -675,7 +755,8 @@ function renderAll() {
   chips($('#sDays'), labels, new Set(), () => {}); // placeholder, replaced below
   renderStationChips(); renderStation();
   chips($('#tDays'), labels, T.days, renderTractors); chips($('#tKinds'), ['曳引車', '全拖車'], T.kinds, renderTractors); chips($('#tUnits'), units, T.units, renderTractors);
-  renderTractors(); renderMatrix(); renderNeeds();
+  renderTractors(); renderMatrix(); renderNeeds(); renderBoard();
+  if (!B.tabSet) { B.tabSet = true; $('#tabs .tab[data-t="board"]').click(); }
 }
 function renderKpis() {
   const box = $('#kpis'); box.innerHTML = '';
@@ -687,7 +768,7 @@ function renderKpis() {
       [bt.length, `兩班之間空檔 ≥${state.params.minGap} 分`, `另有日初待命 ${rows.length - bt.length} 筆`], [(mins / 60).toFixed(1) + ' h', '空檔合計時數', `平均 ${bt.length ? Math.round(mins / bt.length) : 0} 分／筆`],
       [bt.filter(r => r.cands.length).length, '有可跑站所的空檔', `緩衝 ${state.params.buffer} 分`], [top || '—', '空檔最多的站', '兩班之間，筆數']];
     const g = document.createElement('div'); g.className = 'kpi-group';
-    g.innerHTML = `<div class="kpi-title"><b>${esc(d.label)}</b><span class="muted small">${esc(d.file)}</span></div><div class="kpi-grid">${items.map(([v, l, s]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div><div class="s">${s}</div></div>`).join('')}</div>`;
+    g.innerHTML = `<div class="kpi-title"><b>${esc(d.label)}</b><span class="muted small">${esc(d.file)}</span></div><div class="kpi-grid">${items.map(([v, l, s]) => `<div class="kpi"><div class="v ${typeof v === 'string' && v.length > 8 ? 'txt' : ''}">${v}</div><div class="l">${l}</div><div class="s">${s}</div></div>`).join('')}</div>`;
     box.appendChild(g);
   }
 }
@@ -721,6 +802,81 @@ function legText(l, which) {
   if (!l) return `<span class="muted">（${which === 'prev' ? '日初待命' : '日末'}）</span>`;
   const route = which === 'prev' ? (l.from ? `自 ${esc(l.from)} 到站` : '同站作業後到站') : (l.to ? `離站往 ${esc(l.to)}` : '離站');
   return `<span class="mono">${esc(l.code || '')}</span> ${esc(l.trailer || '')}<div class="muted">${route}${l.note ? `｜${esc(l.note)}` : ''}</div>`;
+}
+
+/* ---- 派車看板 ---- */
+const B = { day: null, time: 1320, regions: new Set(), kinds: new Set(), tabSet: false };
+const SLOT0 = 840, SLOT1 = 1920, STEP = 30;   // 14:00 → 翌日 08:00（營運時間）
+function availability(day, t, minLeft) {
+  /* 時刻 t（營運分鐘）在站空等的車頭：ok＝剩餘 ≥ 門檻、soon＝剩 30 分以上但不到門檻 */
+  const out = [];
+  for (const tr of day.tractors) { if (!tr.active) continue; if (B.kinds.size && !B.kinds.has(tr.kind)) continue;
+    for (const g of tr.gaps) { if (g.dur < state.params.minGap) continue; const gs = opT(g.start), ge = gs + g.dur; if (gs <= t && t < ge) { const left = ge - t; out.push({ tractor: tr, gap: g, left, status: left >= minLeft ? 'ok' : left >= 30 ? 'soon' : 'leaving' }); } } }
+  return out;
+}
+function renderBoard() {
+  if (!state.days.length) return;
+  const labels = state.days.map(d => d.label); if (!labels.includes(B.day)) B.day = labels[0];
+  const el = $('#bDays'); el.innerHTML = ''; for (const l of labels) { const c = document.createElement('span'); c.className = 'chip' + (l === B.day ? ' on' : ''); c.textContent = l; c.onclick = () => { B.day = l; renderBoard(); }; el.appendChild(c); }
+  chips($('#bRegions'), REGION_ORDER.filter(r => r !== '未分區' || state.rows.some(x => regionOf(x.station) === '未分區')), B.regions, renderBoard);
+  chips($('#bKinds'), ['曳引車', '全拖車'], B.kinds, renderBoard);
+  renderBoardNow(); renderBoardHeat();
+}
+function boardTime() { const t = parseHHMM($('#bTime').value); return t == null ? B.time : opT(t); }
+function needsAt(day, yard, t) {
+  return state.matched.filter(m => m.day === day && (yardOf(m.need.from) === yard || yardOf(m.need.to) === yard) && m.need.tmed != null && m.need.t1 <= t + 120 && m.need.t2 >= t && m.need.tier !== '偶發');
+}
+function renderBoardNow() {
+  const day = state.days.find(d => d.label === B.day); if (!day) return;
+  const t = boardTime(); B.time = t; const minLeft = +$('#bMinLeft').value || 60;
+  const av = availability(day, t, minLeft).filter(a => a.status !== 'leaving' && (!B.regions.size || B.regions.has(regionOf(a.gap.station))));
+  const ok = av.filter(a => a.status === 'ok'), soon = av.filter(a => a.status === 'soon');
+  const byReg = new Map();
+  for (const a of av) { const r = regionOf(a.gap.station); if (!byReg.has(r)) byReg.set(r, new Map()); const m = byReg.get(r); if (!m.has(a.gap.station)) m.set(a.gap.station, []); m.get(a.gap.station).push(a); }
+  let html = `<div class="now-sum"><span class="big">${esc(B.day)}　${hhmm(t)}</span><span class="big">${ok.length}<small>台可用（剩餘 ≥${minLeft} 分）</small></span><span class="big" style="color:var(--warn)">${soon.length}<small>台即將出車</small></span><span class="muted small">${new Set(ok.map(a => a.gap.station)).size} 個站所有車；點車頭看完整時間軸</span></div>`;
+  if (!av.length) html += '<div class="empty">這個時刻沒有在站空等的車頭，換個時刻或看下方熱圖</div>';
+  for (const r of [...byReg.keys()].sort((a, b) => regionRank(a) - regionRank(b))) {
+    const sts = [...byReg.get(r).entries()].sort((a, b) => b[1].filter(x => x.status === 'ok').length - a[1].filter(x => x.status === 'ok').length || a[0].localeCompare(b[0], 'zh-Hant'));
+    html += `<div class="region"><h3><i class="rc" style="background:${REGION_HEX[r] || '#999'}"></i>${esc(r)} <span class="muted small">${sts.reduce((s, x) => s + x[1].filter(y => y.status === 'ok').length, 0)} 台可用</span></h3><div class="stcards">`;
+    for (const [st, list] of sts) {
+      list.sort((a, b) => (a.status === 'ok' ? 0 : 1) - (b.status === 'ok' ? 0 : 1) || b.left - a.left);
+      const nOk = list.filter(x => x.status === 'ok').length; const pl = placeOf(st);
+      html += `<div class="stcard"><div class="hd"><b>${esc(st)}</b>${pl ? `<span class="tag warn" title="${esc(pl.note)}">${esc(pl.tag)}</span>` : ''}<span class="cnt ${nOk ? '' : 'zero'}">${nOk} 台</span></div>`;
+      for (const a of list) { const g = a.gap, tr = a.tractor; const cands = candidates(st, a.left).slice(0, 6); const flags = []; if (!g.prev) flags.push('日初待命'); if (tr.double) flags.push('雙駕駛'); for (const x of [g.prev, g.next]) if (x && x.note) flags.push('備註:' + x.note);
+        html += `<div class="row ${a.status}" data-code="${esc(tr.code)}" data-day="${esc(B.day)}"><div class="who"><b>${esc(tr.code)}</b>${esc(tr.name)} <span class="muted">${esc(tr.kind)}・${esc(tr.unit)}</span></div><div class="left">${a.status === 'ok' ? '' : '<span class="tag warn">即將出車</span> '}空到 ${hhmm(g.end)}・<b>剩 ${a.left} 分</b></div>
+          <div class="sub">${g.next ? `下一班 <span class="mono">${esc(g.next.code || '')}</span> ${esc(g.next.trailer || '')}${g.next.to ? ' → ' + esc(g.next.to) : ''}` : '日末'}${g.departFrom && g.departFrom !== st && yardMembers(st).length > 1 ? `（由${esc(g.departFrom)}出車）` : ''}${cands.length ? '｜可跑 ' + cands.map(c => `<span class="tag st" title="去 ${c.go}／回 ${c.back}／樣本 ${c.n}">${esc(c.station)} ${Math.round(c.round)}</span>`).join('') : '｜<span class="muted">剩餘時間跑不了來回</span>'}${flags.map(f => `<span class="tag ${f.includes('日初') || f.includes('休息') ? 'warn' : ''}">${esc(f)}</span>`).join('')}</div></div>`; }
+      const nds = needsAt(B.day, st, t);
+      if (nds.length) html += `<div class="needs">預測加班（此刻起 2 小時內）：${nds.slice(0, 5).map(m => `${esc(m.need.from)}→${esc(m.need.to)} ${esc(m.need.boxes)}櫃 <span class="muted">${esc(m.need.tier)} ${hhmm(m.need.t1)}–${hhmm(m.need.t2)}</span>`).join('、')}${nds.length > 5 ? ` 等 ${nds.length} 條` : ''}</div>`;
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+  $('#boardNow').innerHTML = html;
+  $('#boardNow').querySelectorAll('.row[data-code]').forEach(el => el.onclick = () => { const d = state.days.find(x => x.label === el.dataset.day); const tr = d.tractors.find(x => x.code === el.dataset.code && x.active); if (tr) openTractor(tr, d.label); });
+}
+const REGION_HEX = { '北一區': '#e0b400', '北二區': '#e5533d', '桃竹區': '#5cae3f', '中區': '#3b82c4', '彰嘉區': '#d8569b', '南區': '#7e57c2', '未分區': '#9aa3ad' };
+function renderBoardHeat() {
+  const day = state.days.find(d => d.label === B.day); if (!day) return;
+  const minLeft = +$('#bMinLeft').value || 60; const slots = []; for (let s = SLOT0; s <= SLOT1; s += STEP) slots.push(s);
+  const counts = new Map();
+  for (const tr of day.tractors) { if (!tr.active) continue; if (B.kinds.size && !B.kinds.has(tr.kind)) continue;
+    for (const g of tr.gaps) { if (g.dur < state.params.minGap) continue; const gs = opT(g.start), ge = gs + g.dur; if (!counts.has(g.station)) counts.set(g.station, new Array(slots.length).fill(0)); const arr = counts.get(g.station);
+      slots.forEach((s, i) => { if (gs <= s && s < ge && ge - s >= minLeft) arr[i]++; }); } }
+  const rowsByReg = new Map();
+  for (const [st, arr] of counts) { if (!arr.some(x => x)) continue; const r = regionOf(st); if (B.regions.size && !B.regions.has(r)) continue; if (!rowsByReg.has(r)) rowsByReg.set(r, []); rowsByReg.get(r).push([st, arr]); }
+  const max = Math.max(1, ...[...counts.values()].flat());
+  const cur = boardTime(); const curIdx = slots.findIndex((s, i) => s <= cur && cur < s + STEP);
+  let html = `<table class="heat"><thead><tr><th class="st">站所 ＼ 時刻</th>${slots.map((s, i) => `<th class="${s % 60 === 0 ? 'hr' : ''} ${i === curIdx ? 'cur' : ''}">${s % 60 === 0 ? hhmm(s).slice(0, 2) : '·'}</th>`).join('')}</tr></thead><tbody>`;
+  for (const r of [...rowsByReg.keys()].sort((a, b) => regionRank(a) - regionRank(b))) {
+    const rows = rowsByReg.get(r).sort((a, b) => b[1].reduce((x, y) => x + y, 0) - a[1].reduce((x, y) => x + y, 0));
+    html += `<tr class="rg"><th colspan="${slots.length + 1}"><i class="rc" style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${REGION_HEX[r]};margin-right:6px"></i>${esc(r)}</th></tr>`;
+    for (const [st, arr] of rows) { const pl = placeOf(st);
+      html += `<tr><th class="st" title="${esc(pl ? pl.note : st)}">${esc(st)}${pl ? ` <span class="tag warn" style="font-size:10px">${esc(pl.tag)}</span>` : ''}</th>${arr.map((n, i) => `<td class="c ${i === curIdx ? 'cur' : ''}" data-s="${slots[i]}" style="${n ? `background:color-mix(in srgb, var(--gap) ${Math.round(15 + 70 * n / max)}%, var(--surface));color:${n / max > .55 ? '#fff' : 'var(--text)'};font-weight:${n / max > .55 ? 700 : 500}` : ''}" title="${esc(st)} ${hhmm(slots[i])}：${n} 台">${n || ''}</td>`).join('')}</tr>`; }
+  }
+  html += '</tbody></table>';
+  if (!rowsByReg.size) html = '<div class="empty">此日期沒有符合條件的空檔</div>';
+  $('#boardHeat').innerHTML = html;
+  $('#boardHeat').querySelectorAll('td.c').forEach(td => td.onclick = () => { $('#bTime').value = hhmm(+td.dataset.s); renderBoardNow(); renderBoardHeat(); $('#boardNow').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 }
 
 /* ---- 站所視角 ---- */
@@ -824,7 +980,9 @@ async function exportExcel() {
     const lines = [['班次空檔分析（可排加班的空檔與鄰近站所）'], [], ['產生時間', new Date().toLocaleString('zh-TW')], ['來源檔案', state.days.map(d => d.file).join('；')],
       ['空檔門檻', `${P.minGap} 分鐘以上（同一站停留，兩班之間）`], ['作業緩衝', `${P.buffer} 分鐘（掛／卸車廂等作業，加在來回車程之外）`],
       ['站間車程', `由上傳班表（白＋黃）實際班次反推，取中位數，下限 ${P.minLeg} 分；表「站間車程」有樣本數可參考`], ['可跑站所', '去程＋回程＋作業緩衝 ≤ 空檔分鐘，依來回時間由近到遠排列；括號內為來回合計分鐘'],
-      ['底色規則', '白＝原班次、黃＝新增／調整班次、綠＝刪減（已排除不計）'], ['注意', '「日初待命」＝空檔前沒有班次代號（報到後等出車／放空櫃），請自行判斷；全拖車部分班次備註「含休息時間」'],
+      ['底色規則', '白＝原班次、黃＝新增／調整班次、綠＝刪減（已排除不計）'], ['同場域', `${$('#pYards').value}（視為同一地點，車程 0 分；空檔站所顯示為「彰化／秀水」這類合併名稱）`], ['非站所', '工停＝外部停車場（台中市西屯區環中路三段 800 號）'],
+      ['時段可用_日期', '站所 × 30 分時段的可用車頭數（該時刻在站且剩餘空檔 ≥60 分），同網站派車看板'],
+      ['注意', '「日初待命」＝空檔前沒有班次代號（報到後等出車／放空櫃），請自行判斷；全拖車部分班次備註「含休息時間」'],
       [], ['工作表', '內容'], ['空檔_日期', '每台車頭的空檔清單（可篩選單位／站所／分鐘）'], ['站所別_日期', '依站所、時間排序，看某站某時段有哪些車頭在站'], ['時間軸_日期', '每台車頭完整行程（班次段＋空檔）'], ['站間車程', '反推的站間車程（樣本數／中位／最短／最長）']];
     ws0.addRows(lines); ws0.getCell('A1').font = { bold: true, size: 14, name: '微軟正黑體' }; ws0.getColumn(1).width = 16; ws0.getColumn(2).width = 90;
     for (const d of state.days) {
@@ -850,6 +1008,18 @@ async function exportExcel() {
           if (e.k === '空檔') { row.getCell(6).fill = FILL.grn; row.getCell(13).fill = FILL.grn; } else if (e.k === '班次' && e.color === 'yellow') row.getCell(14).fill = FILL.yel; });
       }
       styleTable(ws, [8, 7, 9, 11, 5, 6, 10, 16, 8, 7, 8, 7, 7, 10, 14]);
+    }
+    for (const d of state.days) {   // 時段可用（看板熱圖）
+      const slots = []; for (let s = SLOT0; s <= SLOT1; s += STEP) slots.push(s);
+      const counts = new Map();
+      for (const tr of d.tractors) { if (!tr.active) continue; for (const g of tr.gaps) { if (g.dur < P.minGap) continue; const gs = opT(g.start), ge = gs + g.dur; if (!counts.has(g.station)) counts.set(g.station, new Array(slots.length).fill(0)); slots.forEach((s, i) => { if (gs <= s && s < ge && ge - s >= 60) counts.get(g.station)[i]++; }); } }
+      const ws = wb.addWorksheet(`時段可用_${d.label}`.slice(0, 31));
+      ws.addRow(['分區', '站所', ...slots.map(hhmm)]);
+      for (const [st, arr] of [...counts.entries()].filter(([, a]) => a.some(x => x)).sort((a, b) => regionRank(regionOf(a[0])) - regionRank(regionOf(b[0])) || b[1].reduce((x, y) => x + y, 0) - a[1].reduce((x, y) => x + y, 0))) {
+        const row = ws.addRow([regionOf(st), st, ...arr.map(n => n || null)]);
+        arr.forEach((n, i) => { if (n) row.getCell(i + 3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: n >= 4 ? 'FF0F9D8A' : n >= 2 ? 'FF8ED9CC' : 'FFD7F3EE' } }; });
+      }
+      styleTable(ws, [8, 12, ...slots.map(() => 5.5)]); ws.views = [{ state: 'frozen', xSplit: 2, ySplit: 1 }];
     }
     for (const d of state.days) {
       const ms = state.matched.filter(m => m.day === d.label); if (!ms.length) continue;
@@ -890,6 +1060,13 @@ nd.onclick = () => ni.click(); ni.onchange = () => { if (ni.files[0]) setNeedsFi
 ['dragleave', 'drop'].forEach(ev => nd.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); nd.classList.remove('over'); }));
 nd.addEventListener('drop', e => { const f = [...e.dataTransfer.files].find(f => /\.(csv|xlsx)$/i.test(f.name)); if (f) setNeedsFile(f); });
 ['#nQ', '#nHasCand', '#nBetween'].forEach(s => $(s).addEventListener('input', renderNeedsTable));
+$('#bTime').addEventListener('change', () => { renderBoardNow(); renderBoardHeat(); });
+$('#bTime').addEventListener('keydown', e => { if (e.key === 'Enter') { renderBoardNow(); renderBoardHeat(); } });
+$('#bMinLeft').addEventListener('change', renderBoard);
+$('#bNow').onclick = () => { const n = new Date(); $('#bTime').value = String(n.getHours()).padStart(2, '0') + String(Math.floor(n.getMinutes() / 10) * 10).padStart(2, '0'); renderBoardNow(); renderBoardHeat(); };
+$('#bM30').onclick = () => { $('#bTime').value = hhmm(boardTime() - 30); renderBoardNow(); renderBoardHeat(); };
+$('#bP30').onclick = () => { $('#bTime').value = hhmm(boardTime() + 30); renderBoardNow(); renderBoardHeat(); };
+(function initYards() { let v = null; try { v = localStorage.getItem('sg_yards'); } catch (e) {} $('#pYards').value = v || YARDS_DEFAULT; setYards($('#pYards').value); })();
 ['#pMin', '#pBuf', '#pLeg'].forEach(s => $(s).addEventListener('change', recompute));
 ['#fStation', '#fMinDur', '#fQ', '#fBetween', '#fHasCand'].forEach(s => $(s).addEventListener('input', renderGaps));
 ['#sNow', '#sBetween'].forEach(s => $(s).addEventListener('input', renderStation));

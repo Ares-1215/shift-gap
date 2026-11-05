@@ -14,8 +14,59 @@ from openpyxl.utils import get_column_letter, column_index_from_string
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parse_shift import parse_sheet, norm
 
-MIN_LEG = 5      # 站間車程下限（分）：彰化↔秀水 班表記 0 分
+MIN_LEG = 5      # 站間車程下限（分）
 MAX_LEG = 600    # 超過 10 小時的「車程」視為異常不採計
+
+# 同場域：同一地點、車程 0 分（使用者 2026-11-05 確認：彰化=秀水、中工=西屯；伸港／彰濱只是外面的收放貨點）
+YARDS_DEFAULT = "彰化=秀水；中工=西屯"
+YARD = {}
+
+
+def set_yards(text):
+    YARD.clear()
+    for grp in re.split(r"[;；\n]", text or ""):
+        ms = [s.strip() for s in re.split(r"[=＝,，、]", grp) if s.strip()]
+        if len(ms) < 2:
+            continue
+        label = "／".join(ms)
+        for s in ms:
+            YARD[s] = label
+
+
+set_yards(YARDS_DEFAULT)
+yard = lambda s: YARD.get(s, s)
+yard_members = lambda y: y.split("／") if y and "／" in y else [y]
+PLACE_NOTES = {"工停": ("停車場", "外部停車場（台中市西屯區環中路三段 800 號），租來停放車頭與櫃子，不是站所")}
+
+
+def place_of(y):
+    for m in yard_members(y):
+        if m in PLACE_NOTES:
+            return PLACE_NOTES[m]
+    return None
+
+
+REGION_ORDER = ["北一區", "北二區", "桃竹區", "中區", "彰嘉區", "南區", "未分區"]
+REGION = {}
+try:
+    _rj = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "regions.json"), encoding="utf8"))
+    REGION.update(_rj.get("region", {}))
+except Exception:
+    pass
+REGION.update({"內湖": "北一區", "林口": "北一區", "泰山": "北一區", "北棧": "北一區", "統倉": "北一區", "觀音": "桃竹區", "森楊": "桃竹區", "長興": "桃竹區", "普惠": "桃竹區", "億鑫": "桃竹區", "酷澎": "桃竹區",
+               "工停": "中區", "旱溪": "中區", "潭子": "中區", "科工": "中區", "竹山": "中區", "興毅": "中區", "芬園": "彰嘉區", "伸港": "彰嘉區", "彰濱": "彰嘉區", "大林": "彰嘉區", "斗工": "彰嘉區", "古坑": "彰嘉區", "雲科": "彰嘉區", "舊員": "彰嘉區", "福士": "彰嘉區", "達雅": "彰嘉區", "秀水": "彰嘉區",
+               "玉井": "南區", "安接": "南區", "官田": "南區", "南化": "南區", "路竹": "南區", "總頭": "南區", "舊鳳": "南區", "關廟": "南區"})
+
+
+def region_of(y):
+    for m in yard_members(y):
+        if m in REGION:
+            return REGION[m]
+    return "未分區"
+
+
+def region_rank(r):
+    return REGION_ORDER.index(r) if r in REGION_ORDER else 99
 
 
 def extract_xlsx(path):
@@ -126,8 +177,9 @@ def build_timeline(t):
         if a["abs"] is None or b["abs"] is None:
             continue
         dur = b["abs"] - a["abs"]
-        if a["station"] == b["station"]:
-            gaps.append({"station": a["station"], "start": a["abs"], "end": b["abs"], "dur": dur,
+        if yard(a["station"]) == yard(b["station"]):
+            gaps.append({"station": yard(a["station"]), "arrive_at": a["station"], "depart_from": b["station"],
+                         "start": a["abs"], "end": b["abs"], "dur": dur,
                          "prev": a, "next": b, "prev_leg": prev_leg(seq, i), "next_leg": next_leg(seq, i + 1)})
         else:
             legs.append({"from": a["station"], "to": b["station"], "start": a["abs"], "end": b["abs"], "dur": dur,
@@ -148,7 +200,7 @@ def prev_leg(seq, i):
     frm = None
     j = i
     while j > 0:
-        if seq[j - 1]["station"] != seq[j]["station"]:
+        if yard(seq[j - 1]["station"]) != yard(seq[j]["station"]):
             frm = seq[j - 1]["station"]
             break
         j -= 1
@@ -163,7 +215,7 @@ def next_leg(seq, i):
     to = None
     j = i
     while j < len(seq) - 1:
-        if seq[j + 1]["station"] != seq[j]["station"]:
+        if yard(seq[j + 1]["station"]) != yard(seq[j]["station"]):
             to = seq[j + 1]["station"]
             break
         j += 1
@@ -177,8 +229,9 @@ def travel_matrix(days):
             if not t["active"]:
                 continue
             for l in t["legs"]:
-                if 0 <= l["dur"] <= MAX_LEG:
-                    samples[(l["from"], l["to"])].append(l["dur"])
+                a, b = yard(l["from"]), yard(l["to"])
+                if a != b and 0 <= l["dur"] <= MAX_LEG:
+                    samples[(a, b)].append(l["dur"])
     mat = {}
     for k, v in samples.items():
         mat[k] = {"n": len(v), "med": max(MIN_LEG, statistics.median(v)), "min": min(v), "max": max(v)}
@@ -186,6 +239,9 @@ def travel_matrix(days):
 
 
 def travel(mat, a, b):
+    a, b = yard(a), yard(b)
+    if a == b:
+        return 0, 99
     if (a, b) in mat:
         return mat[(a, b)]["med"], mat[(a, b)]["n"]
     if (b, a) in mat:
@@ -237,6 +293,11 @@ def analyze(days, min_gap, buffer):
                         flags.append(f"備註:{x['note']}")
                 if "yellow" in (g["prev"]["color"], g["next"]["color"]):
                     flags.append("前後班次有調整")
+                if g["arrive_at"] != g["depart_from"]:
+                    flags.append(f"到{g['arrive_at']}、由{g['depart_from']}出車")
+                pl = place_of(g["station"])
+                if pl:
+                    flags.append(f"{pl[0]}：{pl[1]}")
                 rows.append({"day": d["label"], "kind": t["kind"], "unit": t["unit"], "code": t["code"], "name": t["name"],
                              "remark": t["remark"], "station": g["station"], "start": g["start"], "end": g["end"],
                              "dur": g["dur"], "prev": g["prev_leg"], "next": g["next_leg"], "cands": cands, "flags": flags})
@@ -304,7 +365,7 @@ def match_needs(days, mat, needs, min_gap, buffer):
     for d in days:
         dn = [x for x in needs if not x["day"] or x["day"] == d["label"][-4:]]
         for nd in dn:
-            S, T = nd["from"], nd["to"]
+            S, T = yard(nd["from"]), yard(nd["to"])
             if S == T:
                 tST = tTS = SAME_STATION_RT / 2
                 known = False
@@ -447,6 +508,9 @@ def write_excel(days, mat, rows, out, min_gap, buffer, matched=None):
              ["站間車程", "由調整後班表（白＋黃）實際班次反推，取中位數，下限 5 分；表「站間車程」有樣本數可參考"],
              ["可跑站所", "去程＋回程＋作業緩衝 ≤ 空檔分鐘，依來回時間由近到遠排列；括號內為來回合計分鐘"],
              ["底色規則", "白＝原班次、黃＝新增／調整班次、綠＝刪減（已排除不計）"],
+             ["同場域", "；".join(sorted(set(YARD.values()))) + "（視為同一地點，車程 0 分；空檔站所以合併名稱顯示）"],
+             ["非站所", "工停＝外部停車場（台中市西屯區環中路三段 800 號）"],
+             ["時段可用_MMDD", "站所 × 30 分時段的可用車頭數（該時刻在站且剩餘空檔 ≥60 分），同網站派車看板"],
              ["注意", "全拖車部分班次備註「含休息時間」，空檔若為司機休息請自行判斷；雙駕駛車頭已在「標記」欄註明"],
              [], ["工作表", "內容"],
              ["空檔_MMDD", "每台車頭的空檔清單（可篩選單位／站所／分鐘）"],
@@ -512,6 +576,31 @@ def write_excel(days, mat, rows, out, min_gap, buffer, matched=None):
                 row[12].fill = GRN
             elif row[13].value == "新增/調整":
                 row[13].fill = YEL
+    # 時段可用（派車看板熱圖）：站所 × 30 分時段，該時刻在站且剩餘空檔 ≥60 分的車頭數
+    slots = list(range(840, 1921, 30))
+    for d in days:
+        counts = {}
+        for t in d["tractors"]:
+            if not t["active"]:
+                continue
+            for g in t["gaps"]:
+                if g["dur"] < min_gap:
+                    continue
+                gs = opt(g["start"])
+                ge = gs + g["dur"]
+                arr = counts.setdefault(g["station"], [0] * len(slots))
+                for i, s in enumerate(slots):
+                    if gs <= s < ge and ge - s >= 60:
+                        arr[i] += 1
+        ws = wb.create_sheet(f"時段可用_{d['label']}")
+        data = [[region_of(st), st] + [n or None for n in arr]
+                for st, arr in sorted(((st, arr) for st, arr in counts.items() if any(arr)),
+                                      key=lambda x: (region_rank(region_of(x[0])), -sum(x[1])))]
+        write_table(ws, ["分區", "站所"] + [hhmm(s) for s in slots], data, [8, 12] + [5.5] * len(slots), freeze="C2")
+        for row in ws.iter_rows(min_row=2):
+            for c in row[2:]:
+                if c.value:
+                    c.fill = PatternFill("solid", fgColor="0F9D8A" if c.value >= 4 else "8ED9CC" if c.value >= 2 else "D7F3EE")
     if matched:
         write_needs_sheets(wb, matched, days, buffer)
     ws = wb.create_sheet("站間車程")
@@ -528,7 +617,9 @@ def main():
     ap.add_argument("--buffer", type=int, default=30)
     ap.add_argument("--json", help="另存分析結果 JSON")
     ap.add_argument("--needs", help="加班需求清單 CSV/xlsx（ot_forecast.py 產出或自行編）")
+    ap.add_argument("--yards", default=YARDS_DEFAULT, help="同場域，例：彰化=秀水；中工=西屯")
     a = ap.parse_args()
+    set_yards(a.yards)
     days = [load_day(f) for f in a.files]
     mat, rows = analyze(days, a.min, a.buffer)
     matched = None
