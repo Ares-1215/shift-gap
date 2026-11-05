@@ -26,7 +26,8 @@ catch { throw "PAT 失效或無權限：$($_.Exception.Message)`n→ 到 https:/
 
 if (-not $SkipSql) {
   Write-Host '2/4 建表 sg_files / sg_settings（已存在就跳過，通行碼不會被覆蓋）…'
-  $q = Get-Content $sql -Raw -Encoding UTF8
+  # 用 .NET 讀成純字串：Get-Content 的字串帶 PSPath 等屬性，ConvertTo-Json 會把它變成物件（API 回 expected string, received object）
+  $q = [IO.File]::ReadAllText($sql, [Text.Encoding]::UTF8)
   $body = ConvertTo-Json -InputObject @{ query = $q } -Compress
   $null = Invoke-RestMethod -Uri "https://api.supabase.com/v1/projects/$ref/database/query" -Headers $h -Method Post `
     -ContentType 'application/json' -Body ([Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 60

@@ -937,7 +937,7 @@ async function cloudLoad() {
     if (files.length) await addFiles(files, { save: false, cloud: metas }); else if (changed || !state.days.length) { renderFiles(); recompute(); }
     if (!sched.length) toast('網站上還沒有班次表，上傳一份就會存上去');
   } catch (e) { C.err = e.message; console.error(e); }
-  C.loading = false; renderCloud();
+  C.loading = false; renderFiles(); renderNeedsFiles(); renderCloud();   // 登入前就載好的本機檔也要補上「存到網站」鈕
 }
 function renderCloud() {
   const el = $('#cloud'); if (!el) return;
