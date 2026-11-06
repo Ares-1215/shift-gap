@@ -38,7 +38,7 @@ async function settings(): Promise<Record<string, string>> {
   return Object.fromEntries(rows.map((x) => [x.key, x.value]));
 }
 
-const KEY_RE = /^(schedule|needs)\/[0-9A-Za-z_-]{1,24}$/;
+const KEY_RE = /^(schedule|needs|matrix)\/[0-9A-Za-z_-]{1,24}$/;   // matrix/all＝站間車程累積表
 const DAY_RE = /^[0-9A-Za-z_-]{1,24}$/;
 const META = "key,kind,day,name,size,mime,summary,uploader,uploaded_at";
 
@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
     if (action === "put") {
       const kind = String(body.kind ?? "");
       const day = String(body.day ?? "").trim();
-      if (kind !== "schedule" && kind !== "needs") return J({ error: "kind 只能是 schedule 或 needs" }, 400);
+      if (kind !== "schedule" && kind !== "needs" && kind !== "matrix") return J({ error: "kind 只能是 schedule、needs 或 matrix" }, 400);
       if (!DAY_RE.test(day)) return J({ error: "day 格式錯誤（MMDD 或英數）" }, 400);
       const data = String(body.data ?? "");
       if (!data || data.length > MAX_B64 || !/^[A-Za-z0-9+/=\r\n]+$/.test(data.slice(0, 4000))) {
