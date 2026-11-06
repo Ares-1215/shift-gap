@@ -169,6 +169,8 @@ table.tbl tr.click{cursor:pointer}
 .stlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:12px}
 .stbtn{border:1px solid var(--border);border-radius:9px;padding:6px 10px;background:var(--surface-2);cursor:pointer;text-align:left;display:flex;justify-content:space-between;gap:6px}
 .stbtn.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.stbtn.zero{opacity:.42}
+.stbtn.zero.on{opacity:1}
 .stbtn span{font-size:11.5px;opacity:.8}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
 .modal.open{display:flex}
@@ -354,6 +356,7 @@ header.top .wrap{position:relative}
         <div class="field">日期<div class="chips" id="sDays"></div></div>
         <label class="field">時刻查詢（HHMM，看此刻誰在站）<input type="text" id="sNow" placeholder="例 2100" style="width:110px" maxlength="4"></label>
         <label class="field" style="flex-direction:row;align-items:center;gap:6px;padding-bottom:8px"><input type="checkbox" id="sBetween" checked>排除日初待命</label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:6px;padding-bottom:8px"><input type="checkbox" id="sOnlyGap">只看有空檔的站</label>
       </div>
       <div id="stList"></div>
       <div id="stDetail"></div>
@@ -1228,11 +1231,15 @@ function renderStation() {
   for (const r of rows) { if (!agg.has(r.station)) agg.set(r.station, { n: 0, min: 0 }); const a = agg.get(r.station); a.n++; a.min += r.dur; }
   const list = [...agg.entries()].sort((a, b) => b[1].n - a[1].n || b[1].min - a[1].min);
   if (!agg.has(state.station)) state.station = list[0]?.[0] || null;
+  // 全部站所：班次表當天出現過的站都列（使用者 2026-11-06：分區沒把站全部列出來），沒空檔的淡化顯示 0 筆；勾「只看有空檔的站」就只列有空檔的
+  const day = state.days.find(d => d.label === S.day); const all = new Set(agg.keys());
+  if (!$('#sOnlyGap').checked && day) for (const t of day.tractors) { if (!t.active) continue; for (const p of t.seq) if (p.station) all.add(yardOf(p.station)); }
+  const allList = [...all].map(s => [s, agg.get(s) || { n: 0, min: 0 }]);
   // 依分區分組，分區內照運行看板的站所順序（主管 2026-11-06：全擠在一起沒排序很亂）
   const ORDER = Object.keys(REGION); const rank = s => Math.min(...yardMembers(s).map(x => { const i = ORDER.indexOf(x); return i < 0 ? 9999 : i; }));
-  const byReg = new Map(); for (const [s, a] of list) { const r = regionOf(s); if (!byReg.has(r)) byReg.set(r, []); byReg.get(r).push([s, a]); }
+  const byReg = new Map(); for (const [s, a] of allList) { const r = regionOf(s); if (!byReg.has(r)) byReg.set(r, []); byReg.get(r).push([s, a]); }
   $('#stList').innerHTML = [...byReg.keys()].sort((a, b) => regionRank(a) - regionRank(b)).map(r => { const sts = byReg.get(r).sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0], 'zh-Hant'));
-    return `<div class="streg"><div class="strh"><i class="rc" style="background:${REGION_HEX[r] || '#999'}"></i>${esc(r)} <span class="muted small" style="font-weight:400">${sts.length} 站・${sts.reduce((x, y) => x + y[1].n, 0)} 筆</span></div><div class="stlist">${sts.map(([s, a]) => `<button class="stbtn ${s === state.station ? 'on' : ''}" data-s="${esc(s)}"><b>${esc(s)}</b><span>${a.n} 筆・${(a.min / 60).toFixed(1)}h</span></button>`).join('')}</div></div>`; }).join('');
+    return `<div class="streg"><div class="strh"><i class="rc" style="background:${REGION_HEX[r] || '#999'}"></i>${esc(r)} <span class="muted small" style="font-weight:400">${sts.length} 站・${sts.filter(x => x[1].n).length} 站有空檔・${sts.reduce((x, y) => x + y[1].n, 0)} 筆</span></div><div class="stlist">${sts.map(([s, a]) => `<button class="stbtn ${s === state.station ? 'on' : ''} ${a.n ? '' : 'zero'}" data-s="${esc(s)}" title="${a.n ? '' : '這天有車頭經過，但沒有停留 ≥ 門檻的空檔'}"><b>${esc(s)}</b><span>${a.n ? `${a.n} 筆・${(a.min / 60).toFixed(1)}h` : '0 筆'}</span></button>`).join('')}</div></div>`; }).join('');
   $('#stList').querySelectorAll('.stbtn').forEach(b => b.onclick = () => { state.station = b.dataset.s; renderStation(); });
   const box = $('#stDetail'); if (!state.station) { box.innerHTML = '<div class="empty">此日期沒有空檔</div>'; return; }
   const now = parseTime($('#sNow').value);
@@ -1241,11 +1248,13 @@ function renderStation() {
   const live = nowAbs == null ? [] : srows.filter(r => r.op <= nowAbs && nowAbs < r.op + r.dur);
   let html = `<h2 style="margin-top:6px">${esc(state.station)} <span class="n">${srows.length} 筆空檔${nowAbs != null ? `｜${hhmm(nowAbs)} 在站可用 ${live.length} 台` : ''}</span></h2>`;
   if (nowAbs != null) html += live.length ? `<div style="margin-bottom:10px">${live.map(r => `<span class="tag ok">${esc(r.code)} ${esc(r.name)}：還有 ${r.op + r.dur - nowAbs} 分（${hhmm(r.end)} 離站${r.next?.to ? '往' + esc(r.next.to) : ''}）</span>`).join(' ')}</div>` : '<div class="muted small" style="margin-bottom:10px">此刻沒有車頭在站空等</div>';
-  html += gantt(srows.map(r => ({ label: `<b>${esc(r.code)} ${esc(r.name)}</b><span class="muted">${esc(r.kind)}・${esc(r.unit)}</span>`, segs: [{ cls: 'gap' + (r.dur >= 120 ? ' big' : '') + (nowAbs != null && r.op <= nowAbs && nowAbs < r.op + r.dur ? ' now' : ''), s: r.op, e: r.op + r.dur, text: `${hhmm(r.start)}–${hhmm(r.end)} ${r.dur}分 ｜ ${r.prev ? esc(r.prev.code || '') + ' 到' : ''} → ${r.next ? esc(r.next.code || '') + ' 離' + (r.next.to ? '往' + esc(r.next.to) : '') : ''}`, title: r.cands.length ? '可跑：' + r.cands.map(c => `${c.station}(${Math.round(c.round)})`).join('、') : '' }], tractor: r.tractor, day: r.day })), nowAbs);
+  html += srows.length ? gantt(srows.map(r => ({ label: `<b>${esc(r.code)} ${esc(r.name)}</b><span class="muted">${esc(r.kind)}・${esc(r.unit)}</span>`, segs: [{ cls: 'gap' + (r.dur >= 120 ? ' big' : '') + (r.tail ? ' tail' : '') + (nowAbs != null && r.op <= nowAbs && nowAbs < r.op + r.dur ? ' now' : ''), s: r.op, e: r.op + r.dur, text: `${hhmm(r.start)}–${hhmm(r.end)} ${r.dur}分 ｜ ${r.prev ? esc(r.prev.code || '') + ' 到' : ''} → ${r.next ? esc(r.next.code || '') + ' 離' + (r.next.to ? '往' + esc(r.next.to) : '') : r.tail ? '收班' : ''}`, title: r.cands.length ? '可跑：' + r.cands.map(c => `${c.station}(${Math.round(c.round)})`).join('、') : '' }], tractor: r.tractor, day: r.day })), nowAbs)
+    : '<div class="empty">這天此站沒有空檔（有車頭經過，但沒有停留 ≥ 門檻的空檔）</div>';
   const srowsRef = srows;
-  html += `<div class="tblwrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>車頭</th><th>開始</th><th>結束</th><th>分鐘</th><th>前班次（到站）</th><th>後班次（離站）</th><th>可跑站所（來回分鐘）</th><th>標記</th></tr></thead><tbody>${srows.map(r => `<tr><td class="mono"><b>${esc(r.code)}</b> ${esc(r.name)}<div class="small muted">${esc(r.kind)}・${esc(r.unit)}</div></td><td class="mono">${hhmm(r.start)}</td><td class="mono">${hhmm(r.end)}</td><td class="mono"><b>${r.dur}</b></td><td class="small">${legText(r.prev, 'prev')}</td><td class="small">${legText(r.next, 'next', r.tail)}</td><td>${r.cands.map(c => `<span class="tag st">${esc(c.station)} ${Math.round(c.round)}</span>`).join('') || '—'}</td><td>${r.flags.map(f => `<span class="tag">${esc(f)}</span>`).join('')}</td></tr>`).join('')}</tbody></table></div>`;
+  // 明細預設收起（使用者 2026-11-06：和甘特圖重複、很亂）；拿掉可跑站所欄，點列看車頭時間軸
+  if (srows.length) html += `<details class="nd" style="margin-top:12px"><summary>展開明細（${srows.length} 筆：車頭、時段、前後班次、標記；可跑站所請點車頭）</summary><div class="tblwrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>車頭</th><th>開始</th><th>結束</th><th>分鐘</th><th>前班次（到站）</th><th>後班次（離站）</th><th>標記</th></tr></thead><tbody>${srows.map((r, i) => `<tr class="click" data-i="${i}"><td class="mono"><b>${esc(r.code)}</b> ${esc(r.name)}<div class="small muted">${esc(r.kind)}・${esc(r.unit)}</div></td><td class="mono">${hhmm(r.start)}</td><td class="mono">${hhmm(r.end)}</td><td class="mono"><b>${r.dur}</b></td><td class="small">${legText(r.prev, 'prev')}</td><td class="small">${legText(r.next, 'next', r.tail)}</td><td>${r.flags.map(f => `<span class="tag ${f.includes('收班') ? 'ok' : f.includes('誤輸') || f.includes('休息') ? 'warn' : ''}">${esc(f)}</span>`).join('')}</td></tr>`).join('')}</tbody></table></div></details>`;
   box.innerHTML = html; bindGantt(box);
-  box.querySelectorAll('.g-row').forEach(el => el.onclick = () => { const r = srowsRef[+el.dataset.i]; openTractor(r.tractor, r.day); });
+  box.querySelectorAll('.g-row, tr.click').forEach(el => el.onclick = () => { const r = srowsRef[+el.dataset.i]; openTractor(r.tractor, r.day); });
 }
 
 /* ---- 甘特圖 ---- */
@@ -1410,7 +1419,7 @@ $('#bP30').onclick = () => { $('#bTime').value = hhmm(boardTime() + 30); renderB
 (function initYards() { let v = null; try { v = localStorage.getItem('sg_yards'); } catch (e) {} $('#pYards').value = v || YARDS_DEFAULT; setYards($('#pYards').value); })();
 ['#pMin', '#pBuf', '#pLeg', '#pTail', '#pTailMode'].forEach(s => $(s).addEventListener('change', recompute));
 ['#fStation', '#fMinDur', '#fQ', '#fBetween', '#fHasCand'].forEach(s => $(s).addEventListener('input', renderGaps));
-['#sNow', '#sBetween'].forEach(s => $(s).addEventListener('input', renderStation));
+['#sNow', '#sBetween', '#sOnlyGap'].forEach(s => $(s).addEventListener('input', renderStation));
 ['#tQ', '#tOnlyGap'].forEach(s => $(s).addEventListener('input', renderTractors));
 ['#mFrom', '#mTo'].forEach(s => $(s).addEventListener('input', renderMatrix));
 $('#tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { $('#tabs').querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b)); document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'p-' + b.dataset.t)); state.tab = b.dataset.t; });
