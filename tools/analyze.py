@@ -16,8 +16,9 @@ from parse_shift import parse_sheet, norm
 
 MIN_LEG = 5      # 站間車程下限（分）
 MAX_LEG = 600    # 超過 10 小時的「車程」視為異常不採計
-TAIL_DEFAULT = 180   # 收班後可用：最後一班到站後 N 分內仍視為在站待命可跑加班（0＝不計；--tail 可改）
+TAIL_DEFAULT = "end"   # 收班後可用："end"＝到翌日 08:00（主管 2026-11-06）、整數＝固定分鐘、0＝不計（--tail 可改）
 TAIL = TAIL_DEFAULT
+OP_END = 1920          # 營運時間軸結束：翌日 08:00（12:00 起算 1200 分）
 
 # 同場域：同一地點、車程 0 分（使用者 2026-11-05 確認：彰化=秀水、中工=西屯；伸港／彰濱只是外面的收放貨點）
 YARDS_DEFAULT = "彰化=秀水；中工=西屯"
@@ -137,8 +138,8 @@ def load_day(path):
     return day
 
 
-def build_timeline(t):
-    """調整後班表（排除綠色）→ 依序的 (站, 絕對分鐘) 點、班次段、空檔"""
+def build_timeline(t, mat=None):
+    """調整後班表（排除綠色）→ 依序的 (站, 絕對分鐘) 點、班次段、空檔；mat 給了才能推估沒填時間的收班到站"""
     pts = [(b, p) for b in t["blocks"] for p in b["points"] if p["color"] != "green"]
     prev = None
     dayoff = 0
@@ -180,20 +181,38 @@ def build_timeline(t):
             continue
         dur = b["abs"] - a["abs"]
         if yard(a["station"]) == yard(b["station"]):
-            gaps.append({"station": yard(a["station"]), "arrive_at": a["station"], "depart_from": b["station"],
+            gaps.append({"station": yard(a["station"]), "to": yard(a["station"]), "arrive_at": a["station"], "depart_from": b["station"],
                          "start": a["abs"], "end": b["abs"], "dur": dur,
                          "prev": a, "next": b, "prev_leg": prev_leg(seq, i), "next_leg": next_leg(seq, i + 1)})
         else:
             legs.append({"from": a["station"], "to": b["station"], "start": a["abs"], "end": b["abs"], "dur": dur,
                          "code": a["shift_code"], "trailer": a["trailer"], "note": a["note"],
                          "color": "yellow" if "yellow" in (a["color"], b["color"], a["shift_color"]) else "white"})
-    # 收班待命：最後一班到站後 TAIL 分內仍視為在站可跑加班（使用者 2026-11-05：跑完當天班次、後面沒班也可以跑加班）
+    # 收班待命：最後一班到站後仍視為在站可跑加班（使用者 2026-11-05）；預設到翌日 08:00（主管 2026-11-06）
+    # 起站＝迄站：車頭當天應回到第一站；終站≠起站多半是誤輸，加班後仍要回起站（gap["to"]）並標記
+    # 終站＝最後一個有站名的點（最後一班常沒填時間）；到站時間沒填就用車程推估
     last_i = next((i for i in range(len(seq) - 1, -1, -1) if seq[i]["abs"] is not None and seq[i]["station"]), None)
-    if TAIL > 0 and last_i is not None:
-        a = seq[last_i]
-        gaps.append({"station": yard(a["station"]), "arrive_at": a["station"], "depart_from": a["station"],
-                     "start": a["abs"], "end": a["abs"] + TAIL, "dur": TAIL,
-                     "prev": a, "next": None, "prev_leg": prev_leg(seq, last_i), "next_leg": None, "tail": True})
+    last_e = next((i for i in range(len(seq) - 1, -1, -1) if seq[i]["station"]), None)
+    first = next((p for p in seq if p["station"]), None)
+    t["home"] = yard(first["station"]) if first else None
+    t["last_station"] = yard(seq[last_e]["station"]) if last_e is not None else None
+    t["mismatch"] = bool(t["home"] and t["last_station"] and t["home"] != t["last_station"])
+    if last_i is not None and TAIL:
+        a, last = seq[last_i], seq[last_e]
+        start, est = a["abs"], False
+        if last_e != last_i:
+            est = True
+            for i in range(last_i, last_e):
+                if yard(seq[i]["station"]) == yard(seq[i + 1]["station"]):
+                    continue
+                tr = travel(mat, seq[i]["station"], seq[i + 1]["station"])[0] if mat else None
+                start += tr or 0
+        tail = TAIL if isinstance(TAIL, int) else max(0, OP_END - opt(start))
+        if tail > 0:
+            gaps.append({"station": yard(last["station"]), "to": t["home"] or yard(last["station"]),
+                         "arrive_at": last["station"], "depart_from": last["station"],
+                         "start": start, "end": start + tail, "dur": tail,
+                         "prev": last, "next": None, "prev_leg": prev_leg(seq, last_e), "next_leg": None, "tail": True, "est": est})
     t["seq"] = seq
     t["legs"] = legs
     t["gaps"] = gaps
@@ -258,18 +277,21 @@ def travel(mat, a, b):
     return None, 0
 
 
-def candidates(mat, station, gap_min, buffer):
-    """來回車程＋作業緩衝 放得進空檔的站所"""
+def candidates(mat, station, gap_min, buffer, to=None):
+    """從 station 去 T 再回 to（兩班之間 to＝原站；收班待命 to＝起站），車程＋作業緩衝 放得進空檔的站所"""
+    to = to or station
     others = set()
     for (a, b) in mat:
-        if a == station:
+        if a in (station, to):
             others.add(b)
-        if b == station:
+        if b in (station, to):
             others.add(a)
+    others.discard(station)
+    others.discard(to)
     out = []
     for T in others:
         t1, n1 = travel(mat, station, T)
-        t2, n2 = travel(mat, T, station)
+        t2, n2 = travel(mat, T, to)
         if t1 is None or t2 is None:
             continue
         rt = t1 + t2 + buffer
@@ -281,6 +303,9 @@ def candidates(mat, station, gap_min, buffer):
 
 def analyze(days, min_gap, buffer):
     mat = travel_matrix(days)
+    for d in days:            # 第二輪：收班到站時間可用車程推估
+        for t in d["tractors"]:
+            build_timeline(t, mat)
     rows = []
     for d in days:
         for t in d["tractors"]:
@@ -289,12 +314,16 @@ def analyze(days, min_gap, buffer):
             for g in t["gaps"]:
                 if g["dur"] < min_gap:
                     continue
-                cands = candidates(mat, g["station"], g["dur"], buffer)
+                cands = candidates(mat, g["station"], g["dur"], buffer, g.get("to"))
                 flags = []
                 if g["prev_leg"] is None and not g.get("tail"):
                     flags.append("日初待命(前無班次)")
                 if g.get("tail"):
                     flags.append("收班待命(最後一班後)")
+                    if g.get("to") and g["to"] != g["station"]:
+                        flags.append(f"需回起站 {g['to']}（起迄不同，可能誤輸）")
+                    if g.get("est"):
+                        flags.append(f"到站推估 {hhmm(g['start'])}（末班未填時間）")
                 elif g["next_leg"] is None:
                     flags.append("日末(後無班次)")
                 if t["double"]:
@@ -399,16 +428,24 @@ def match_needs(days, mat, needs, min_gap, buffer):
                             continue
                         gs = opt(g["start"])
                         ge = gs + g["dur"]
+                        gto = g.get("to") or g["station"]
+                        # 載到迄站 T 之後還要回到空檔該回的站：兩班之間＝原站、收班＝起站（終站≠起站時多一段回程）
+                        after = tTS if S == T else 0
+                        if T != gto:
+                            x, _ = travel(mat, T, gto)
+                            if x is None:
+                                continue
+                            after += x
                         if g["station"] == S:
-                            lo, hi, pat = max(gs, nd["t1"]), min(nd["t2"], ge - (tST + tTS + buffer)), "A 起站在站"
+                            lo, hi, pat = max(gs, nd["t1"]), min(nd["t2"], ge - (tST + after + buffer)), "A 起站在站"
                         else:
-                            lo, hi, pat = max(gs + tTS, nd["t1"]), min(nd["t2"], ge - (tST + buffer)), "B 迄站在站"
+                            lo, hi, pat = max(gs + tTS, nd["t1"]), min(nd["t2"], ge - (tST + after + buffer)), "B 迄站在站"
                         if S == T and g["station"] == S:
                             pat = "本站加班"
                         if lo > hi:
                             continue
-                        cands.append({"pattern": pat, "tractor": t, "gap": g, "lo": lo, "hi": hi, "slack": ge - lo - (tST + tTS + buffer),
-                                      "rt": tST + tTS + buffer})
+                        cands.append({"pattern": pat, "tractor": t, "gap": g, "lo": lo, "hi": hi, "slack": ge - lo - (tST + after + buffer),
+                                      "rt": (tTS if pat.startswith("B") else 0) + tST + after + buffer})
             cands.sort(key=lambda c: (0 if c["pattern"].startswith(("A", "本")) else 1, -c["slack"]))
             out.append({"day": d["label"], "need": nd, "known": known, "tST": tST, "tTS": tTS, "cands": cands})
     return out
@@ -437,6 +474,8 @@ def write_needs_sheets(wb, matched, days, buffer):
                     flags.append("日初待命")
                 if g.get("tail"):
                     flags.append("收班待命")
+                    if g.get("to") and g["to"] != g["station"]:
+                        flags.append(f"需回起站 {g['to']}")
                 for x in (g["prev_leg"], g["next_leg"]):
                     if x and x.get("note"):
                         flags.append(f"備註:{x['note']}")
@@ -632,10 +671,10 @@ def main():
     ap.add_argument("--json", help="另存分析結果 JSON")
     ap.add_argument("--needs", help="加班需求清單 CSV/xlsx（ot_forecast.py 產出或自行編）")
     ap.add_argument("--yards", default=YARDS_DEFAULT, help="同場域，例：彰化=秀水；中工=西屯")
-    ap.add_argument("--tail", type=int, default=TAIL_DEFAULT, help="收班後可用分鐘：最後一班到站後仍視為在站待命（0＝不計）")
+    ap.add_argument("--tail", default=TAIL_DEFAULT, help="收班後可用：end＝到翌日 08:00（預設）、數字＝固定分鐘、0＝不計")
     a = ap.parse_args()
     global TAIL
-    TAIL = max(0, a.tail)
+    TAIL = "end" if str(a.tail).lower() == "end" else max(0, int(a.tail))
     set_yards(a.yards)
     days = [load_day(f) for f in a.files]
     mat, rows = analyze(days, a.min, a.buffer)
