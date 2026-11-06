@@ -1230,11 +1230,11 @@ function renderStation() {
   const rows = stationRows(); const agg = new Map();
   for (const r of rows) { if (!agg.has(r.station)) agg.set(r.station, { n: 0, min: 0 }); const a = agg.get(r.station); a.n++; a.min += r.dur; }
   const list = [...agg.entries()].sort((a, b) => b[1].n - a[1].n || b[1].min - a[1].min);
-  if (!agg.has(state.station)) state.station = list[0]?.[0] || null;
   // 全部站所：班次表當天出現過的站都列（使用者 2026-11-06：分區沒把站全部列出來），沒空檔的淡化顯示 0 筆；勾「只看有空檔的站」就只列有空檔的
   const day = state.days.find(d => d.label === S.day); const all = new Set(agg.keys());
   if (!$('#sOnlyGap').checked && day) for (const t of day.tractors) { if (!t.active) continue; for (const p of t.seq) if (p.station) all.add(yardOf(p.station)); }
   const allList = [...all].map(s => [s, agg.get(s) || { n: 0, min: 0 }]);
+  if (!all.has(state.station)) state.station = list[0]?.[0] || null;   // 選到 0 空檔的站也要能留住
   // 依分區分組，分區內照運行看板的站所順序（主管 2026-11-06：全擠在一起沒排序很亂）
   const ORDER = Object.keys(REGION); const rank = s => Math.min(...yardMembers(s).map(x => { const i = ORDER.indexOf(x); return i < 0 ? 9999 : i; }));
   const byReg = new Map(); for (const [s, a] of allList) { const r = regionOf(s); if (!byReg.has(r)) byReg.set(r, []); byReg.get(r).push([s, a]); }
