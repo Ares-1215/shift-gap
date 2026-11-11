@@ -234,6 +234,11 @@ header.top .wrap{position:relative}
 .call .d{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle;background:var(--gap)}
 .call .d.has{background:transparent;border:1px solid var(--border)}
 .call .d.sel{background:var(--accent)}
+.call .d.act{background:var(--leg-new)}
+.calg .day.act::before{content:"";position:absolute;right:4px;top:4px;width:5px;height:5px;border-radius:50%;background:var(--leg-new)}
+.seg.leg.empty{background:transparent;border-style:dashed}
+.wdcells i{display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;border-radius:4px;background:var(--surface-2);font-size:10px;font-style:normal;color:var(--muted);margin-right:2px}
+.wdcells i.on{background:var(--gap-soft);color:var(--text);font-weight:600}
 /* 站所視角：依分區分組 */
 .streg{margin-bottom:12px}
 .strh{font-weight:600;font-size:13px;margin:0 0 6px;display:flex;align-items:center;gap:6px}
@@ -298,7 +303,7 @@ details.chk table td{padding:5px 10px}
   <div class="cal" id="cal" hidden>
     <div class="calh"><button class="btn ghost" id="calPrev">‹</button><b id="calTitle"></b><button class="btn ghost" id="calNext">›</button></div>
     <div class="calg" id="calGrid"></div>
-    <div class="call"><span><i class="d has"></i>網站有班次表</span><span><i class="d on"></i>已載入</span><span><i class="d sel"></i>目前</span></div>
+    <div class="call"><span><i class="d has"></i>網站有班次表</span><span><i class="d on"></i>已載入</span><span><i class="d sel"></i>目前</span><span><i class="d act"></i>有實際紀錄</span></div>
   </div>
   <div class="spacer"></div>
   <button class="btn" id="helpBtn" title="規則說明">❔ 規則</button>
@@ -341,13 +346,38 @@ details.chk table td{padding:5px 10px}
   <div id="main" style="display:none">
     <div class="tabs" id="tabs">
       <button class="tab active" data-t="board">派車看板</button>
+      <button class="tab" data-t="actual" id="actualTab">實際空窗</button>
       <button class="tab" data-t="gaps">空檔清單</button>
       <button class="tab" data-t="station">站所視角</button>
       <button class="tab" data-t="tractor">車頭時間軸</button>
+      <button class="tab" data-t="fleet" id="fleetTab">車頭資源</button>
       <button class="tab" data-t="matrix">站間車程</button>
       <button class="tab" data-t="needs" id="needsTab" style="display:none">加班配車</button>
       <button class="tab" data-t="check" id="checkTab">資料檢查<span class="cnt" id="checkCnt"></span></button>
     </div>
+
+    <section class="panel card" id="p-actual">
+      <div class="filters">
+        <div class="field">日期（有實際紀錄的日子）<div class="chips" id="aDays"></div></div>
+        <label class="field">時刻<span style="display:flex;gap:4px"><input type="text" id="aTime" value="22:00" maxlength="5" style="width:84px;font-weight:700;font-size:16px"><button class="btn" id="aNow" title="用現在的時間">現在</button><button class="btn" id="aM30">−30</button><button class="btn" id="aP30">+30</button></span></label>
+        <div class="field">分區<div class="chips" id="aRegions"></div></div>
+        <label class="field">等待門檻（分鐘）<input type="number" id="aMin" value="60" step="10" style="width:90px"></label>
+      </div>
+      <div class="small muted" style="margin-bottom:8px">資料來源：指揮中心夜間作業平台的歷史派車紀錄（發車／到站掃讀）。<b>實際等待</b>＝車頭到站掃讀後，到同一站下一趟發車掃讀之間的時間；沒有到站掃讀的用平台預估需時推算（標「估」）。跟「派車看板」的表定空檔對照，就看得出哪些站實際上在空等。不含司機姓名。</div>
+      <div id="actualBody"></div>
+    </section>
+
+    <section class="panel card" id="p-fleet">
+      <div class="alert" style="display:block;background:var(--leg-new-soft);color:var(--text);border-color:var(--leg-new);margin:0 0 12px">雛形：以夜間作業平台 14 天（10/27–11/09）的派車紀錄估算。正式版要接情報總管／C-Core 2.0 的司機出勤與里程資料，欄位對照見資料需求清單。</div>
+      <div class="filters">
+        <label class="field">搜尋車頭<input type="text" id="fQ2" placeholder="代號" style="width:110px"></label>
+        <label class="field">分區<select id="fReg"><option value="">全部</option></select></label>
+        <label class="field">單位<select id="fUnit"><option value="">全部</option></select></label>
+        <label class="field">排序<select id="fSort"><option value="nights">出勤夜數</option><option value="trips">趟數</option><option value="km">里程</option><option value="util">稼動率</option><option value="wait">等待時間</option><option value="span">上班時長</option></select></label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:6px;padding-bottom:8px"><input type="checkbox" id="fRegular">只看平日出勤 ≥80% 的車頭</label>
+      </div>
+      <div id="fleetBody"></div>
+    </section>
 
     <section class="panel card" id="p-check">
       <div class="small muted" style="margin-bottom:10px">班次表裡看起來不對、或程式必須用推估補上的地方。不影響其他分頁的計算，承辦修班表時可以照這裡逐台核對；點列可看該車頭的時間軸。</div>
@@ -456,6 +486,8 @@ details.chk table td{padding:5px 10px}
     <li><b>看板開關</b>：「含收班待命」預設開、「含日初待命」預設關（報到後還沒跑第一班的車頭通常不拿來跑加班）；總數分開寫「兩班之間」與「收班待命」。</li>
     <li><b>資料檢查</b>：列出最後一班沒填時間、起站≠終站、班次沒時間、時間格式看不懂、車程 0 分或倒退、車程過長、整台刪減，點列看時間軸；Excel 也有「資料檢查_日期」。</li>
     <li><b>站間車程累積</b>：每次上傳班表都把當天的站間車程樣本併進網站的累積表（最多 60 天），可跑站所用「本次＋累積」的中位數；樣本少於 3 班的候選站標淡色加虛線。</li>
+    <li><b>實際空窗</b>：夜間作業平台的歷史派車紀錄（發車／到站掃讀）算出每台車實際在站等待的時間（到站 → 同站下一趟發車），有此刻在站清單、熱圖、與同日表定空檔的站所對照；沒有到站掃讀的用平台預估需時推估並標「約」。</li>
+    <li><b>車頭資源</b>（雛形）：以 14 天實際紀錄估算每台車頭的出勤夜數、趟數、里程、上班時長、行駛、等待、稼動率（行駛 ÷ 上班）、常駐站與星期規律，以及每晚全車隊可支配工時；正式版要接情報總管／C-Core 2.0 的出勤與里程資料。</li>
     <li><b>網站共用資料</b>：看板通行碼可看；管理碼才能上傳、覆蓋、刪除。上傳的班次表與加班清單存在網站，開網站自動載入「昨天起兩週內」日期的班次表（跨午夜的班次要看前一天那份）；同一天再上傳即覆蓋；超過 21 天自動清除。</li>
     <li><b>站間車程</b>：由上傳的所有班表中實際班次的「出發→到達」時間差取中位數（下限可調），沒有官方里程表時的替代值。</li>
     <li><b>可跑站所</b>：去程＋回程＋掛卸作業緩衝 ≤ 空檔分鐘，依來回合計由近到遠排列；括號內為來回合計分鐘。缺少車程樣本的站所不會出現。</li>
@@ -1101,7 +1133,7 @@ function renderCloud() {
   const list = [...C.files].sort((a, b) => (a.kind === b.kind ? b.day.localeCompare(a.day) : a.kind === 'schedule' ? -1 : 1));
   el.innerHTML = `<span class="dot ${C.err ? 'err' : 'on'}"></span><span class="grow">${status}${C.role === 'admin' ? `<span class="tag ok" style="margin-left:8px">管理者${C.user ? '・' + esc(C.user) : ''}</span>` : ''}</span>
     <button class="btn" id="cReload" title="重新從網站載入最新班次表">↻ 重新載入</button>${C.role === 'admin' ? `<button class="btn" id="cLogout" title="這台裝置不再記住管理碼">登出管理</button>` : `<button class="btn" id="cAdmin">管理碼</button>`}
-    <details><summary>網站上的檔案（${C.files.length}）</summary><table><thead><tr><th>類型</th><th>日期</th><th>檔名</th><th>內容</th><th>上傳</th><th></th></tr></thead><tbody>${list.map(f => `<tr><td>${f.kind === 'schedule' ? '班次表' : f.kind === 'needs' ? '加班清單' : '車程累積表'}</td><td><b>${esc(f.day)}</b></td><td title="${esc(f.name)}">${esc(f.name.length > 40 ? f.name.slice(0, 38) + '…' : f.name)}</td><td>${f.summary ? (f.kind === 'schedule' ? `車頭 ${f.summary.tractors ?? '?'}（曳 ${f.summary.trac ?? '?'}／全 ${f.summary.full ?? '?'}）、空檔 ${f.summary.gaps ?? '?'}` : f.kind === 'needs' ? `${f.summary.rows ?? ''} 條 ${(f.summary.days || []).join('、')}` : `${f.summary.days ?? '?'} 天、${f.summary.pairs ?? '?'} 組站對`) : ''} <span class="muted">${Math.round((f.size || 0) / 1024)} KB</span></td><td>${fmtTime(f.uploaded_at)}${f.uploader ? '・' + esc(f.uploader) : ''}</td><td style="white-space:nowrap">${f.kind === 'matrix' ? '<span class="tag">自動</span>' : loaded.has(f.key) ? '<span class="tag ok">已載入</span>' : `<button class="btn" data-load="${esc(f.key)}">載入</button>`}${C.role === 'admin' ? ` <button class="btn" data-del="${esc(f.key)}">刪除</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">還沒有檔案：上傳班次表就會存上來</td></tr>'}</tbody></table></details>`;
+    <details><summary>網站上的檔案（${C.files.length}）</summary><table><thead><tr><th>類型</th><th>日期</th><th>檔名</th><th>內容</th><th>上傳</th><th></th></tr></thead><tbody>${list.map(f => `<tr><td>${{ schedule: '班次表', needs: '加班清單', matrix: '車程累積表', actual: '實際行程', fleet: '車頭資源' }[f.kind] || esc(f.kind)}</td><td><b>${esc(f.day)}</b></td><td title="${esc(f.name)}">${esc(f.name.length > 40 ? f.name.slice(0, 38) + '…' : f.name)}</td><td>${f.summary ? (f.kind === 'schedule' ? `車頭 ${f.summary.tractors ?? '?'}（曳 ${f.summary.trac ?? '?'}／全 ${f.summary.full ?? '?'}）、空檔 ${f.summary.gaps ?? '?'}` : f.kind === 'needs' ? `${f.summary.rows ?? ''} 條 ${(f.summary.days || []).join('、')}` : `${f.summary.days ?? '?'} 天、${f.summary.pairs ?? '?'} 組站對`) : ''} <span class="muted">${Math.round((f.size || 0) / 1024)} KB</span></td><td>${fmtTime(f.uploaded_at)}${f.uploader ? '・' + esc(f.uploader) : ''}</td><td style="white-space:nowrap">${f.kind === 'matrix' ? '<span class="tag">自動</span>' : loaded.has(f.key) ? '<span class="tag ok">已載入</span>' : `<button class="btn" data-load="${esc(f.key)}">載入</button>`}${C.role === 'admin' ? ` <button class="btn" data-del="${esc(f.key)}">刪除</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">還沒有檔案：上傳班次表就會存上來</td></tr>'}</tbody></table></details>`;
   $('#cReload').onclick = () => cloudLoad();
   const lo = $('#cLogout'); if (lo) lo.onclick = () => { forgetAdmin(); renderFiles(); renderNeedsFiles(); };
   const ad = $('#cAdmin'); if (ad) ad.onclick = () => askAdmin('輸入管理碼後才能上傳、覆蓋、刪除網站上的檔案').then(() => { renderFiles(); renderNeedsFiles(); });
@@ -1147,6 +1179,7 @@ function renderAll() {
   renderStationChips(); renderStation();
   chips($('#tDays'), labels, T.days, renderTractors); chips($('#tKinds'), ['曳引車', '全拖車'], T.kinds, renderTractors); chips($('#tUnits'), units, T.units, renderTractors);
   renderTractors(); renderMatrix(); renderNeeds(); renderBoard(); renderCheck(); renderDateBtn(); renderSlim();
+  if (state.tab === 'actual') renderActual();
   if (!B.tabSet) { B.tabSet = true; $('#tabs .tab[data-t="board"]').click(); }
 }
 /* ---- 上傳區收成一行狀態列（派車同事開網站第一眼就是看板） ---- */
@@ -1309,6 +1342,110 @@ function renderBoardHeat() {
   $('#boardHeat').querySelectorAll('td.c').forEach(td => td.onclick = () => { $('#bTime').value = hhmm(+td.dataset.s); renderBoardNow(); renderBoardHeat(); $('#boardNow').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 }
 
+/* ===================== 實際空窗 & 車頭資源：夜間作業平台實際行程（nightshift-history/tools/export_site.mjs 產出，不含姓名） ===================== */
+const AX = { day: null, data: {}, loading: {}, fleet: null, fleetLoading: false, time: 1320, regions: new Set() };
+const K_TAG = { '加班車': 'new', '空車空櫃': '', '正班改派': 'warn', '正班其他': 'ok' };
+const actualDays = () => C.files.filter(f => f.kind === 'actual').map(f => f.day).sort();
+const sumBy = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
+function prepActual(obj) {
+  // 與 export_site.mjs 的 seqStats 同邏輯：等待＝到站（掃讀或估計）→ 同場域下一趟發車；跨站沒紀錄的算「不明」
+  const byMt = new Map(); for (const t of obj.trips) { if (!byMt.has(t.mt)) byMt.set(t.mt, []); byMt.get(t.mt).push(t); }
+  const waits = [], stats = new Map();
+  const MAX_IDLE = 360;   // 兩趟之間超過 6 小時＝下班（平台一天的紀錄含清晨收尾＋傍晚再出車），不算等待也不算上班
+  for (const [mt, trips] of byMt) { trips.sort((a, b) => a.dep - b.dep); let drive = 0, wait = 0, unknown = 0, span = 0, blockStart = trips[0].dep; const ws = []; const u = obj.units[mt] || {};
+    const endOf = a => (a.arr != null ? a.arr : (a.est > 0 ? a.dep + a.est : null));
+    for (let i = 0; i < trips.length; i++) { const a = trips[i]; const dur = a.arr != null ? a.arr - a.dep : (a.est > 0 ? a.est : null); if (dur != null && dur >= 0 && dur <= 600) drive += dur;
+      const b = trips[i + 1]; if (!b) continue; const aEnd = endOf(a);
+      if (aEnd == null) { if (b.dep - a.dep > MAX_IDLE) { span += Math.max(0, a.dep - blockStart) + (a.est || 30); blockStart = b.dep; } else unknown += Math.max(0, b.dep - a.dep); continue; }
+      const g = b.dep - aEnd; if (g < 0) continue;
+      if (g > MAX_IDLE) { span += Math.max(0, aEnd - blockStart); blockStart = b.dep; continue; }
+      if (yardOf(a.e) === yardOf(b.s)) { wait += g; const w = { mt, unit: u.unit || '', tk: u.tk || '', st: yardOf(a.e), arriveAt: a.e, start: aEnd, end: b.dep, dur: g, est: a.arr == null, prev: a, next: b }; ws.push(w); waits.push(w); } else unknown += g; }
+    const first = trips[0].dep, last = trips[trips.length - 1]; const lastEnd = endOf(last) ?? last.dep; span += Math.max(0, lastEnd - blockStart);
+    stats.set(mt, { mt, unit: u.unit || '', tk: u.tk || '', trips, waits: ws, first, lastEnd, span, drive, wait, unknown }); }
+  return { ...obj, byMt, stats, waits };
+}
+async function loadActual(label) {
+  if (AX.data[label]) return AX.data[label]; const f = C.files.find(x => x.kind === 'actual' && x.day === label); if (!f || AX.loading[label]) return null;
+  AX.loading[label] = true; try { const g = await cloud('get', { key: f.key }); AX.data[label] = prepActual(await unpackJSON(g.data, g.mime)); } catch (e) { showErr('實際紀錄載入失敗：' + e.message); } AX.loading[label] = false; return AX.data[label] || null;
+}
+const actualTime = () => { const t = parseHHMM($('#aTime').value); return t == null ? AX.time : opT(t); };
+const tripText = tr => `${esc(tr.s)} → ${esc(tr.e)}${tr.name ? ' ' + esc(tr.name) : ''}<span class="tag ${K_TAG[tr.k] || ''}">${esc(tr.k)}</span>${tr.split ? '<span class="tag">拆班</span>' : ''}`;
+async function renderActual() {
+  const box = $('#actualBody'), days = actualDays(), elDays = $('#aDays'); elDays.innerHTML = '';
+  if (!C.role) { box.innerHTML = '<div class="empty">要看實際紀錄請先輸入看板通行碼（上方狀態列「輸入通行碼」）</div>'; return; }
+  if (!days.length) { box.innerHTML = '<div class="empty">網站上還沒有夜間平台的實際行程（由 nightshift-history/tools/export_site.mjs 產出後用 push_to_site.ps1 推上來）</div>'; return; }
+  if (!days.includes(AX.day)) AX.day = days.includes(B.day) ? B.day : days[days.length - 1];
+  for (const l of days) { const c = document.createElement('span'); c.className = 'chip' + (l === AX.day ? ' on' : ''); c.textContent = l; c.onclick = () => { AX.day = l; renderActual(); }; elDays.appendChild(c); }
+  chips($('#aRegions'), REGION_ORDER, AX.regions, renderActual);
+  const A = AX.data[AX.day];
+  if (!A) { box.innerHTML = '<div class="empty">載入實際紀錄中…</div>'; if (await loadActual(AX.day)) renderActual(); return; }
+  const t = actualTime(); AX.time = t; const minW = +$('#aMin').value || 60;
+  const st = [...A.stats.values()]; const spanM = sumBy(st, s => s.span), driveM = sumBy(st, s => s.drive), waitM = sumBy(st, s => s.wait), unkM = sumBy(st, s => s.unknown);
+  const W = A.waits.filter(w => w.dur >= minW); const planned = state.rows.filter(r => r.day === AX.day && r.between);
+  let html = `<div class="kpi-group"><div class="kpi-title"><b>${esc(AX.day)}</b><span class="muted small">${esc(A.wd || '')}　夜間平台實際紀錄・到站掃讀 ${A.meta?.scanArr ?? '?'}%</span></div><div class="kpi-grid">
+    ${[[A.byMt.size, '車頭實際出車', `${A.trips.length} 趟`], [W.length, `實際等待 ≥${minW} 分`, `${(sumBy(W, w => w.dur) / 60).toFixed(1)} 小時`], [Math.round(driveM / Math.max(1, spanM) * 100) + '%', '稼動率', `行駛 ${(driveM / 60).toFixed(0)} h ／ 上班 ${(spanM / 60).toFixed(0)} h`], [(waitM / 60).toFixed(0) + ' h', '在站等待合計', `另有位置不明 ${(unkM / 60).toFixed(0)} h`],
+      [planned.length ? `${planned.length}` : '—', '同日表定兩班之間空檔', planned.length ? `${(sumBy(planned, r => r.dur) / 60).toFixed(1)} 小時（班次表）` : '這天沒載入班次表']].map(([v, l, s]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div><div class="s">${s}</div></div>`).join('')}</div></div>`;
+  // 此刻在站等待
+  const live = W.filter(w => { const gs = opT(w.start); return gs <= t && t < gs + w.dur && (!AX.regions.size || AX.regions.has(regionOf(w.st))); });
+  const byReg = new Map(); for (const w of live) { const r = regionOf(w.st); if (!byReg.has(r)) byReg.set(r, new Map()); const m = byReg.get(r); if (!m.has(w.st)) m.set(w.st, []); m.get(w.st).push(w); }
+  html += `<h2 style="margin-top:16px">${hhmm(t)} 實際在站等待 <span class="n">${live.length} 台（等待 ≥${minW} 分的車頭，依當晚掃讀紀錄）</span></h2>`;
+  if (!live.length) html += '<div class="empty">這個時刻沒有在站等待 ≥ 門檻的車頭</div>';
+  for (const r of [...byReg.keys()].sort((a, b) => regionRank(a) - regionRank(b))) { const sts = [...byReg.get(r).entries()].sort((a, b) => b[1].length - a[1].length);
+    html += `<div class="region"><h3><i class="rc" style="background:${REGION_HEX[r] || '#999'}"></i>${esc(r)} <span class="muted small">${sumBy(sts, x => x[1].length)} 台</span></h3><div class="stcards">`;
+    for (const [s, list] of sts) { list.sort((a, b) => a.start - b.start);
+      html += `<div class="stcard"><div class="hd"><b>${esc(s)}</b><span class="cnt">${list.length} 台</span></div>${list.map(w => `<div class="row" data-mt="${esc(w.mt)}"><div class="who"><b>${esc(w.mt)}</b><span class="muted">${esc(w.unit)}${w.tk ? '・' + esc(w.tk) : ''}</span></div><div class="left">${w.est ? '約 ' : ''}${hhmm(w.start)} 到站・<b>已等 ${fmtLeft(t - opT(w.start))}</b></div><div class="sub">下一趟 ${hhmm(w.end)} ${tripText(w.next)}（共等 ${fmtLeft(w.dur)}）</div></div>`).join('')}</div>`; }
+    html += '</div></div>'; }
+  // 熱圖
+  const slots = []; for (let s = SLOT0; s <= SLOT1; s += STEP) slots.push(s); const counts = new Map();
+  for (const w of W) { if (AX.regions.size && !AX.regions.has(regionOf(w.st))) continue; const gs = opT(w.start), ge = gs + w.dur; if (!counts.has(w.st)) counts.set(w.st, new Array(slots.length).fill(0)); slots.forEach((s, i) => { if (gs <= s && s < ge) counts.get(w.st)[i]++; }); }
+  const rowsByReg = new Map(); for (const [s, arr] of counts) { if (!arr.some(x => x)) continue; const r = regionOf(s); if (!rowsByReg.has(r)) rowsByReg.set(r, []); rowsByReg.get(r).push([s, arr]); }
+  const max = Math.max(1, ...[...counts.values()].flat()); const curIdx = slots.findIndex(s => s <= t && t < s + STEP);
+  html += `<h2 style="margin-top:22px">站所 × 時段　實際在站等待車頭數 <span class="n">30 分一格；數字＝該時刻正在該站等待（≥${minW} 分）的車頭數；點格子切換上方時刻</span></h2><div class="heatwrap"><table class="heat"><thead><tr><th class="st">站所 ＼ 時刻</th>${slots.map((s, i) => `<th class="${s % 60 === 0 ? 'hr' : ''} ${i === curIdx ? 'cur' : ''}">${s % 60 === 0 ? hhmm(s).slice(0, 2) : '·'}</th>`).join('')}</tr></thead><tbody>`;
+  for (const r of [...rowsByReg.keys()].sort((a, b) => regionRank(a) - regionRank(b))) { html += `<tr class="rg"><th colspan="${slots.length + 1}"><i class="rc" style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${REGION_HEX[r]};margin-right:6px"></i>${esc(r)}</th></tr>`;
+    for (const [s, arr] of rowsByReg.get(r).sort((a, b) => sumBy(b[1], x => x) - sumBy(a[1], x => x))) html += `<tr><th class="st">${esc(s)}</th>${arr.map((n, i) => `<td class="c ${i === curIdx ? 'cur' : ''}" data-s="${slots[i]}" style="${n ? `background:color-mix(in srgb, var(--leg-new) ${Math.round(15 + 70 * n / max)}%, var(--surface));font-weight:${n / max > .55 ? 700 : 500}` : ''}" title="${esc(s)} ${hhmm(slots[i])}：${n} 台">${n || ''}</td>`).join('')}</tr>`; }
+  html += '</tbody></table></div>';
+  // 與表定對照
+  const agg = new Map(); for (const w of W) { const o = agg.get(w.st) || { an: 0, am: 0, pn: 0, pm: 0 }; o.an++; o.am += w.dur; agg.set(w.st, o); } for (const r of planned) { const o = agg.get(r.station) || { an: 0, am: 0, pn: 0, pm: 0 }; o.pn++; o.pm += r.dur; agg.set(r.station, o); }
+  const cmp = [...agg.entries()].sort((a, b) => b[1].am - a[1].am).slice(0, 20);
+  html += `<h2 style="margin-top:22px">實際等待 vs 表定空檔（依站所） <span class="n">同一天；表定＝班次表兩班之間 ≥ 門檻的空檔，實際＝掃讀算出的在站等待。實際多於表定＝現場比班表更閒；表定多於實際＝班表上的空檔實際被加班或改派用掉了</span></h2>
+    <div class="tblwrap" style="max-height:50vh"><table class="tbl"><thead><tr><th>站所</th><th>分區</th><th>實際等待 筆</th><th>實際等待 小時</th><th>表定空檔 筆</th><th>表定空檔 小時</th><th>差異（實際−表定 小時）</th></tr></thead><tbody>${cmp.map(([s, o]) => { const d = (o.am - o.pm) / 60; return `<tr><td><b>${esc(s)}</b></td><td>${esc(regionOf(s))}</td><td class="mono">${o.an}</td><td class="mono">${(o.am / 60).toFixed(1)}</td><td class="mono">${planned.length ? o.pn : '—'}</td><td class="mono">${planned.length ? (o.pm / 60).toFixed(1) : '—'}</td><td class="mono" style="color:${!planned.length ? 'inherit' : d > 1 ? 'var(--warn)' : d < -1 ? 'var(--gap)' : 'inherit'}">${planned.length ? (d > 0 ? '+' : '') + d.toFixed(1) : '—'}</td></tr>`; }).join('') || '<tr><td colspan="7" class="empty">無資料</td></tr>'}</tbody></table></div>`;
+  // 等待明細
+  const Ws = [...W].sort((a, b) => a.st.localeCompare(b.st, 'zh-Hant') || opT(a.start) - opT(b.start));
+  html += `<details class="nd" style="margin-top:14px"><summary>展開等待明細（${Ws.length} 筆，點列看該車頭當晚行程）</summary><div class="tblwrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>站所</th><th>車頭</th><th>到站</th><th>再發車</th><th>等待</th><th>前一趟</th><th>下一趟</th></tr></thead><tbody>${Ws.slice(0, 400).map(w => `<tr class="click" data-mt="${esc(w.mt)}"><td><b>${esc(w.st)}</b></td><td class="mono"><b>${esc(w.mt)}</b> <span class="muted">${esc(w.unit)}</span></td><td class="mono">${w.est ? '約 ' : ''}${hhmm(w.start)}</td><td class="mono">${hhmm(w.end)}</td><td class="mono"><b>${w.dur}</b> 分</td><td class="small">${tripText(w.prev)}</td><td class="small">${tripText(w.next)}</td></tr>`).join('')}</tbody></table></div></details>`;
+  box.innerHTML = html;
+  box.querySelectorAll('[data-mt]').forEach(el => el.onclick = () => openActualTractor(A, el.dataset.mt));
+  box.querySelectorAll('td.c').forEach(td => td.onclick = () => { $('#aTime').value = hhmm(+td.dataset.s); renderActual(); });
+}
+function openActualTractor(A, mt) {
+  const s = A.stats.get(mt); if (!s) return; const base = opT(s.first) - s.first;
+  const segs = [...s.trips.map(tr => { const end = tr.arr != null ? tr.arr : (tr.est > 0 ? tr.dep + tr.est : tr.dep + 30); return { cls: 'leg' + (tr.k === '加班車' ? ' new' : tr.k === '空車空櫃' ? ' empty' : ''), s: tr.dep + base, e: end + base, text: `${esc(tr.s)}→${esc(tr.e)} ${esc(tr.name || tr.k)}${tr.arr == null ? '（到站估）' : ''}`, title: `${tr.k} ${tr.no} ${tr.s} ${hhmm(tr.dep)} → ${tr.e} ${tr.arr != null ? hhmm(tr.arr) : '到站未掃讀'}${tr.km ? ' ' + tr.km + ' 公里' : ''}` }; }),
+    ...s.waits.map(w => ({ cls: 'gap' + (w.dur >= 120 ? ' big' : ''), s: w.start + base, e: w.end + base, text: `${esc(w.st)} 等 ${w.dur}分`, title: `${w.st} ${hhmm(w.start)}–${hhmm(w.end)} 等待 ${w.dur} 分` }))];
+  $('#mTitle').innerHTML = `${esc(A.label)}（實際）　<span class="mono">${esc(mt)}</span> ${esc(s.unit)}${s.tk ? '・' + esc(s.tk) : ''} <span class="n muted small">${hhmm(s.first)} 首班發車 → ${hhmm(s.lastEnd)} 末班到站・上班 ${fmtLeft(s.span)}・行駛 ${fmtLeft(s.drive)}・等待 ${fmtLeft(s.wait)}・不明 ${fmtLeft(s.unknown)}・稼動率 ${Math.round(s.drive / Math.max(1, s.span) * 100)}%</span>`;
+  $('#mBody').innerHTML = gantt([{ label: `<b>${esc(mt)}</b>`, segs }]) + `<div class="legend" style="margin-top:8px"><span><i style="background:var(--leg-soft);border:1px solid var(--leg)"></i>正班</span><span><i style="background:var(--leg-new-soft);border:1px solid var(--leg-new)"></i>加班車</span><span><i style="border:1px dashed var(--leg)"></i>空車／空櫃</span><span><i style="background:var(--gap-soft);border:1px dashed var(--gap)"></i>在站等待</span></div>
+    <div class="tblwrap" style="margin-top:8px;max-height:50vh"><table class="tbl"><thead><tr><th>序</th><th>類別</th><th>班次代號</th><th>起站</th><th>發車掃讀</th><th>迄站</th><th>到站掃讀</th><th>分鐘</th><th>公里</th><th>之後</th></tr></thead><tbody>${s.trips.map((tr, i) => { const w = s.waits.find(x => x.prev === tr); const nx = s.trips[i + 1]; return `<tr><td>${i + 1}</td><td><span class="tag ${K_TAG[tr.k] || ''}">${esc(tr.k)}</span>${tr.split ? ' <span class="tag">拆班</span>' : ''}</td><td class="mono">${esc(tr.no)} <span class="muted small">${esc(tr.name)}</span></td><td>${esc(tr.s)}</td><td class="mono">${hhmm(tr.dep)}</td><td>${esc(tr.e)}</td><td class="mono">${tr.arr != null ? hhmm(tr.arr) : '<span class="muted">未掃讀' + (tr.est ? '（估 ' + tr.est + ' 分）' : '') + '</span>'}</td><td class="mono">${tr.arr != null ? tr.arr - tr.dep : ''}</td><td class="mono">${tr.km || ''}</td><td>${w ? `<span class="tag ${w.dur >= 60 ? 'ok' : ''}">在 ${esc(w.st)} 等 ${w.dur} 分</span>` : nx ? (yardOf(tr.e) === yardOf(nx.s) ? '' : '<span class="tag warn" title="下一趟從別站發車，中間沒有紀錄">移動無紀錄</span>') : '<span class="tag">末班</span>'}</td></tr>`; }).join('')}</tbody></table></div>`;
+  $('#modal').classList.add('open');
+}
+async function renderFleet() {
+  const box = $('#fleetBody'); if (!C.role) { box.innerHTML = '<div class="empty">要看車頭資源請先輸入看板通行碼</div>'; return; }
+  if (!AX.fleet) { const f = C.files.find(x => x.kind === 'fleet'); if (!f) { box.innerHTML = '<div class="empty">網站上還沒有車頭資源統計（export_site.mjs 產出的 fleet.json）</div>'; return; } if (AX.fleetLoading) return; AX.fleetLoading = true; box.innerHTML = '<div class="empty">載入中…</div>';
+    try { const g = await cloud('get', { key: f.key }); AX.fleet = await unpackJSON(g.data, g.mime); } catch (e) { showErr('車頭資源載入失敗：' + e.message); AX.fleetLoading = false; return; } AX.fleetLoading = false; }
+  const F = AX.fleet, U = F.util;
+  const regs = [...new Set(F.tractors.map(t => t.region))].sort((a, b) => regionRank(a) - regionRank(b)), units = [...new Set(F.tractors.map(t => t.unit).filter(Boolean))].sort((a, b) => unitRank(a) - unitRank(b));
+  const fill = (sel, items) => { const cur = sel.value; sel.innerHTML = '<option value="">全部</option>' + items.map(x => `<option ${x === cur ? 'selected' : ''}>${esc(x)}</option>`).join(''); }; fill($('#fReg'), regs); fill($('#fUnit'), units);
+  const q = $('#fQ2').value.trim(), reg = $('#fReg').value, unit = $('#fUnit').value, sortKey = $('#fSort').value, onlyReg = $('#fRegular').checked, need = Math.ceil(F.weekdays * 0.8);
+  const list = F.tractors.filter(t => (!q || t.mt.includes(q)) && (!reg || t.region === reg) && (!unit || t.unit === unit) && (!onlyReg || t.wkNights >= need)).sort((a, b) => (b[sortKey] ?? 0) - (a[sortKey] ?? 0) || b.nights - a.nights);
+  let html = `<div class="kpi-group"><div class="kpi-title"><b>${esc(fmtTimeRange(F.from, F.to))}</b><span class="muted small">平日 ${F.weekdays} 天平均（每晚）</span></div><div class="kpi-grid">
+    ${[[F.tractors.length, '具名車頭', `平日出勤 ≥80% 的 ${F.regular} 台`], [U.tractors, '每晚出車', `${U.trips} 趟`], [U.spanH.toFixed(0) + ' h', '每晚上班時長合計', '首班發車 → 末班到站（可支配工時的「水庫」）'], [U.driveH.toFixed(0) + ' h', '每晚行駛', `稼動率 ${U.util}%`], [U.waitH.toFixed(0) + ' h', '每晚在站等待', `≥60 分 ${U.waits60} 筆；另有位置不明 ${U.unknownH.toFixed(0)} h`]].map(([v, l, s]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div><div class="s">${s}</div></div>`).join('')}</div></div>`;
+  const maxSpan = Math.max(...F.byWd.map(w => w.spanH));
+  html += `<h2 style="margin-top:16px">星期規律 <span class="n">每晚平均；條狀＝上班時長合計</span></h2><div class="tblwrap"><table class="tbl"><thead><tr><th>星期</th><th>天數</th><th>出車台數</th><th>趟數</th><th>上班時長 h</th><th>行駛 h</th><th>等待 h</th><th>稼動率</th></tr></thead><tbody>${F.byWd.map(w => `<tr><td><b>週${esc(w.wd)}</b></td><td class="mono">${w.n}</td><td class="mono">${w.tractors}</td><td class="mono">${w.trips}</td><td class="mono">${w.spanH}<span class="bar" style="width:${Math.round(120 * w.spanH / maxSpan)}px"></span></td><td class="mono">${w.driveH}</td><td class="mono">${w.waitH}</td><td class="mono">${w.util}%</td></tr>`).join('')}</tbody></table></div>`;
+  html += `<h2 style="margin-top:16px">等待最多的站所 <span class="n">平日每晚平均</span></h2><div class="tblwrap" style="max-height:40vh"><table class="tbl"><thead><tr><th>站所</th><th>分區</th><th>每晚等待小時</th><th>每晚等待 ≥60 分 筆數</th><th>14 天合計小時</th></tr></thead><tbody>${F.stations.slice(0, 15).map(s => `<tr><td><b>${esc(s.st)}</b></td><td>${esc(s.region)}</td><td class="mono">${s.hPerDay}</td><td class="mono">${s.n60PerDay}</td><td class="mono">${s.h}</td></tr>`).join('')}</tbody></table></div>`;
+  const WDL = ['日', '一', '二', '三', '四', '五', '六'];
+  html += `<h2 style="margin-top:16px">車頭一覽 <span class="n">${list.length} 台；數字＝每晚平均；稼動率＝行駛 ÷ 上班時長</span></h2><div class="tblwrap" style="max-height:70vh"><table class="tbl"><thead><tr><th>車頭</th><th>單位</th><th>常駐站</th><th>出勤夜</th><th>週一 二 三 四 五 六 日</th><th>趟/晚</th><th>公里/晚</th><th>上班</th><th>行駛</th><th>等待</th><th>稼動率</th><th>首班</th><th>末班</th><th>加班/空車 趟</th></tr></thead><tbody>${list.slice(0, 600).map(t => `<tr><td class="mono"><b>${esc(t.mt)}</b>${t.tk ? `<div class="small muted">${esc(t.tk)}</div>` : ''}</td><td>${esc(t.unit || '—')}</td><td>${esc(t.home)}<span class="muted small"> ${t.homeShare}%</span></td><td class="mono"><b>${t.nights}</b><span class="muted small">/${F.days.length}・平日 ${t.wkNights}/${F.weekdays}</span></td><td class="mono wdcells">${[1, 2, 3, 4, 5, 6, 0].map(i => `<i class="${t.wd[i] ? 'on' : ''}" title="週${WDL[i]} ${t.wd[i]} 晚">${t.wd[i] || ''}</i>`).join('')}</td><td class="mono">${t.tripsN}</td><td class="mono">${t.kmN}</td><td class="mono">${fmtLeft(t.span)}</td><td class="mono">${fmtLeft(t.drive)}</td><td class="mono">${fmtLeft(t.wait)}</td><td class="mono"><b>${t.util}%</b></td><td class="mono">${esc(t.first)}</td><td class="mono">${esc(t.last)}</td><td class="mono small">${t.kinds['加班車']}／${t.kinds['空車空櫃']}</td></tr>`).join('')}</tbody></table></div>
+    <div class="small muted" style="margin-top:8px">資料：${esc(F.source)}；統計產生 ${fmtTime(F.generated)}。「位置不明」＝下一趟從別站發車但中間沒有掃讀紀錄（可能漏掃或平台外調度）。</div>`;
+  box.innerHTML = html;
+}
+const fmtTimeRange = (a, b) => `${a.slice(4, 6)}/${a.slice(6)} – ${b.slice(4, 6)}/${b.slice(6)}`;
+
 /* ---- 日期：全站共用一顆（主管 2026-11-06 要日曆選日期） ---- */
 const WD = ['日', '一', '二', '三', '四', '五', '六'];
 const CAL = { y: null, m: null };
@@ -1322,21 +1459,23 @@ function defaultLabel(labels) {   // 清晨 12:00 前看前一天的班表（班
   const n = new Date(); const y = new Date(n.getFullYear(), n.getMonth(), n.getDate() - (n.getHours() < 12 ? 1 : 0));
   for (const l of [mmdd(y), mmdd(n)]) if (labels.includes(l)) return l; return labels[0];
 }
-function setActiveDay(label) { B.day = label; S.day = label; F.days = new Set([label]); T.days = new Set([label]); N.days = new Set([label]); renderAll(); }
+function setActiveDay(label) { B.day = label; S.day = label; F.days = new Set([label]); T.days = new Set([label]); N.days = new Set([label]); if (actualDays().includes(label)) AX.day = label; renderAll(); }
 function renderDateBtn() { const l = state.days.length ? B.day : null; const d = l && labelDate(l); $('#dateLbl').textContent = !l ? '選日期' : d ? `${d.getMonth() + 1}/${d.getDate()}（${WD[d.getDay()]}）` : l; }
 function renderCal() {
   const now = new Date(); if (CAL.y == null) { const d = (state.days.length && labelDate(B.day)) || now; CAL.y = d.getFullYear(); CAL.m = d.getMonth(); }
-  const cloudDays = new Set(C.files.filter(f => f.kind === 'schedule').map(f => f.day)), loaded = new Set(state.days.map(d => d.label)), cur = state.days.length ? B.day : null;
+  const cloudDays = new Set(C.files.filter(f => f.kind === 'schedule').map(f => f.day)), loaded = new Set(state.days.map(d => d.label)), cur = state.days.length ? B.day : null, actDays = new Set(actualDays());
   $('#calTitle').textContent = `${CAL.y} 年 ${CAL.m + 1} 月`;
   const first = new Date(CAL.y, CAL.m, 1), nDays = new Date(CAL.y, CAL.m + 1, 0).getDate();
   let html = WD.map(w => `<div class="wd">${w}</div>`).join(''); for (let i = 0; i < first.getDay(); i++) html += '<div></div>';
-  for (let d = 1; d <= nDays; d++) { const dt = new Date(CAL.y, CAL.m, d), l = mmdd(dt); const cls = ['day']; if (loaded.has(l)) cls.push('on'); else if (cloudDays.has(l)) cls.push('has'); if (l === cur) cls.push('sel'); if (dt.toDateString() === now.toDateString()) cls.push('today');
-    html += `<button class="${cls.join(' ')}" data-l="${l}" title="${loaded.has(l) ? '已載入' : cloudDays.has(l) ? '網站上有班次表，點了載入' : '網站上沒有這天的班次表'}">${d}</button>`; }
+  for (let d = 1; d <= nDays; d++) { const dt = new Date(CAL.y, CAL.m, d), l = mmdd(dt); const cls = ['day']; if (loaded.has(l)) cls.push('on'); else if (cloudDays.has(l)) cls.push('has'); if (actDays.has(l)) cls.push('act'); if (l === cur) cls.push('sel'); if (dt.toDateString() === now.toDateString()) cls.push('today');
+    html += `<button class="${cls.join(' ')}" data-l="${l}" title="${loaded.has(l) ? '班次表已載入' : cloudDays.has(l) ? '網站上有班次表，點了載入' : '網站上沒有這天的班次表'}${actDays.has(l) ? '；有夜間平台實際紀錄' : ''}">${d}</button>`; }
   $('#calGrid').innerHTML = html;
   $('#calGrid').querySelectorAll('button.day').forEach(b => b.onclick = () => pickDay(b.dataset.l));
 }
 async function pickDay(l) {
-  if (!state.days.some(d => d.label === l)) { const f = C.files.find(x => x.kind === 'schedule' && x.day === l); if (!f) { toast(`${l.slice(0, 2)}/${l.slice(2)} 網站上沒有班次表，請先上傳`); return; } $('#cal').hidden = true; toast('載入中…'); await loadKey(f.key); }
+  if (!state.days.some(d => d.label === l)) { const f = C.files.find(x => x.kind === 'schedule' && x.day === l);
+    if (!f) { if (actualDays().includes(l)) { AX.day = l; $('#cal').hidden = true; $('#tabs .tab[data-t="actual"]').click(); toast(`${l.slice(0, 2)}/${l.slice(2)} 只有夜間平台實際紀錄，沒有班次表`); } else toast(`${l.slice(0, 2)}/${l.slice(2)} 網站上沒有班次表，請先上傳`); return; }
+    $('#cal').hidden = true; toast('載入中…'); await loadKey(f.key); }
   setActiveDay(l); $('#cal').hidden = true;
 }
 $('#dateBtn').onclick = e => { e.stopPropagation(); const c = $('#cal'); if (c.hidden) { CAL.y = null; renderCal(); c.hidden = false; } else c.hidden = true; };
@@ -1557,7 +1696,11 @@ $('#bP30').onclick = () => { $('#bTime').value = hhmm(boardTime() + 30); renderB
 ['#sNow', '#sBetween', '#sOnlyGap'].forEach(s => $(s).addEventListener('input', renderStation));
 ['#tQ', '#tOnlyGap'].forEach(s => $(s).addEventListener('input', renderTractors));
 ['#mFrom', '#mTo'].forEach(s => $(s).addEventListener('input', renderMatrix));
-$('#tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { $('#tabs').querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b)); document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'p-' + b.dataset.t)); state.tab = b.dataset.t; });
+$('#tabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { $('#tabs').querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b)); document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'p-' + b.dataset.t)); state.tab = b.dataset.t; if (state.tab === 'actual') renderActual(); if (state.tab === 'fleet') renderFleet(); });
+$('#aTime').addEventListener('change', renderActual); $('#aTime').addEventListener('keydown', e => { if (e.key === 'Enter') renderActual(); }); $('#aMin').addEventListener('change', renderActual);
+$('#aNow').onclick = () => { const n = new Date(); $('#aTime').value = hhmm(n.getHours() * 60 + Math.floor(n.getMinutes() / 10) * 10); renderActual(); };
+$('#aM30').onclick = () => { $('#aTime').value = hhmm(actualTime() - 30); renderActual(); }; $('#aP30').onclick = () => { $('#aTime').value = hhmm(actualTime() + 30); renderActual(); };
+['#fQ2', '#fReg', '#fUnit', '#fSort', '#fRegular'].forEach(s => $(s).addEventListener('input', () => { if (AX.fleet) renderFleet(); }));
 $('#dlBtn').onclick = exportExcel;
 $('#mClose').onclick = () => $('#modal').classList.remove('open'); $('#modal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
 $('#helpBtn').onclick = () => $('#helpModal').classList.add('open'); $('#helpClose').onclick = () => $('#helpModal').classList.remove('open'); $('#helpModal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });

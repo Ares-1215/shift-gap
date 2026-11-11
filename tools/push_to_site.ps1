@@ -5,7 +5,7 @@
 # 同一天再推一次就是覆蓋；清單的日期由 CSV「日期」欄算出（例 1106-1107）
 param(
   [Parameter(Mandatory = $true)][string]$Path,
-  [ValidateSet('schedule', 'needs')][string]$Kind = 'schedule',
+  [ValidateSet('schedule', 'needs', 'matrix', 'actual', 'fleet')][string]$Kind = 'schedule',
   [string]$Day,
   [string]$Name,
   [string]$Admin,

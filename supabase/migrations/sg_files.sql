@@ -3,7 +3,7 @@
 
 create table if not exists public.sg_files (
   key         text primary key,                 -- 'schedule/1105'、'needs/1105-1106'
-  kind        text not null check (kind in ('schedule', 'needs', 'matrix')),
+  kind        text not null check (kind in ('schedule', 'needs', 'matrix', 'actual', 'fleet')),
   day         text not null,                    -- MMDD（needs 可為日期範圍）
   name        text not null,                    -- 原始檔名
   size        integer not null default 0,
@@ -16,7 +16,7 @@ create table if not exists public.sg_files (
 create index if not exists sg_files_uploaded_idx on public.sg_files (uploaded_at);
 -- 既有表補上 matrix（站間車程累積表）這種 kind；可重複執行
 alter table public.sg_files drop constraint if exists sg_files_kind_check;
-alter table public.sg_files add constraint sg_files_kind_check check (kind in ('schedule', 'needs', 'matrix'));
+alter table public.sg_files add constraint sg_files_kind_check check (kind in ('schedule', 'needs', 'matrix', 'actual', 'fleet'));
 
 create table if not exists public.sg_settings (
   key   text primary key,
